@@ -14,10 +14,26 @@ class Settings(BaseSettings):
     Create a .env file in the project root (copy from .env.example).
     """
 
-    # ----- Redis -----
+    # ----- Queue Mode -----
+    queue_mode: str = Field(
+        default="memory",
+        description="Queue mode: 'redis', 'upstash', or 'memory' (for local testing)"
+    )
+    
+    # ----- Redis (standard protocol) -----
     redis_url: str = Field(
         default="redis://localhost:6379",
-        description="Redis connection URL (Upstash recommended)"
+        description="Redis connection URL (standard redis:// protocol)"
+    )
+    
+    # ----- Upstash REST API -----
+    redis_rest_url: Optional[str] = Field(
+        default=None,
+        description="Upstash REST API URL"
+    )
+    redis_rest_token: Optional[str] = Field(
+        default=None,
+        description="Upstash REST API token"
     )
 
     # ----- ClickHouse -----
@@ -63,9 +79,10 @@ class Settings(BaseSettings):
     )
 
     class Config:
-        env_file = ".env"
+        env_file = "../../.env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "ignore"
 
 
 # Singleton instance - import this in other modules
