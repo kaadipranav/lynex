@@ -12,6 +12,7 @@ import logging
 from config import settings
 from schemas import HealthResponse
 from routes.events import router as events_router
+import queue as event_queue
 
 
 # =============================================================================
@@ -37,10 +38,18 @@ async def lifespan(app: FastAPI):
     logger.info(f"   Debug mode: {settings.debug}")
     logger.info(f"   Server: {settings.api_host}:{settings.api_port}")
     
+    # Try to connect to Redis (non-blocking, will retry on first request)
+    try:
+        await event_queue.get_redis_client()
+        logger.info("   Redis: Connected ✅")
+    except Exception as e:
+        logger.warning(f"   Redis: Not available (will retry on requests) - {e}")
+    
     yield
     
     # Shutdown
     logger.info("👋 Sentry for AI - Ingest API shutting down...")
+    await event_queue.close_redis_client()
 
 
 # =============================================================================
@@ -96,8 +105,21 @@ async def global_exception_handler(request: Request, exc: Exception):
 # Health check endpoint
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
 async def health_check():
-    """Health check endpoint."""
-    return HealthResponse(status="healthy")
+    """Health check endpoint with Redis status."""
+    redis_healthy = await event_queue.health_check()
+    status = "healthy" if redis_healthy else "degraded"
+    return HealthResponse(status=status)
+
+
+# Queue stats endpoint
+@app.get("/health/queue", tags=["Health"])
+async def queue_health():
+    """Get queue statistics."""
+    try:
+        stats = await event_queue.get_queue_stats()
+        return {"status": "ok", **stats}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
 
 
 # Root endpoint

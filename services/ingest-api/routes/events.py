@@ -8,6 +8,7 @@ import logging
 
 from schemas import EventEnvelope, EventIngestResponse, ErrorResponse
 from auth import APIKeyData, get_api_key
+import queue as event_queue
 
 
 logger = logging.getLogger("sentryai.ingest.events")
@@ -29,6 +30,7 @@ router = APIRouter()
         401: {"model": ErrorResponse, "description": "Missing API key"},
         403: {"model": ErrorResponse, "description": "Invalid API key"},
         422: {"description": "Validation error"},
+        503: {"model": ErrorResponse, "description": "Queue unavailable"},
     }
 )
 async def ingest_event(
@@ -64,7 +66,6 @@ async def ingest_event(
     logger.info(f"   Type: {event.type}")
     logger.info(f"   Timestamp: {event.timestamp}")
     logger.info(f"   SDK: {event.sdk.name} v{event.sdk.version}")
-    logger.info(f"   Body: {event.body}")
     
     # Warn if event project_id doesn't match API key project
     if event.project_id != api_key.project_id:
@@ -72,8 +73,19 @@ async def ingest_event(
             f"Project mismatch: event={event.project_id}, key={api_key.project_id}"
         )
     
-    # TODO: Task 5 - Push to Redis queue instead of just logging
-    # await queue.push(event)
+    # Push to Redis queue
+    try:
+        message_id = await event_queue.push_event(event)
+        logger.info(f"   ✅ Queued: {message_id}")
+    except Exception as e:
+        logger.error(f"   ❌ Queue failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": "Queue unavailable",
+                "message": "Event could not be queued. Please retry.",
+            }
+        )
     
     return EventIngestResponse(
         status="queued",
@@ -94,6 +106,7 @@ async def ingest_event(
         202: {"description": "Batch accepted for processing"},
         401: {"model": ErrorResponse, "description": "Missing API key"},
         403: {"model": ErrorResponse, "description": "Invalid API key"},
+        503: {"model": ErrorResponse, "description": "Queue unavailable"},
     }
 )
 async def ingest_events_batch(
@@ -117,14 +130,23 @@ async def ingest_events_batch(
     
     logger.info(f"📥 Batch received (auth: {api_key.project_id}): {len(events)} events")
     
-    processed = []
-    for event in events:
-        logger.info(f"   - {event.type}: {event.event_id}")
-        processed.append(event.event_id)
+    # Push all events to Redis queue
+    try:
+        message_ids = await event_queue.push_events_batch(events)
+        logger.info(f"   ✅ Batch queued: {len(message_ids)} events")
+    except Exception as e:
+        logger.error(f"   ❌ Batch queue failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": "Queue unavailable",
+                "message": "Events could not be queued. Please retry.",
+            }
+        )
     
     return {
         "status": "queued",
         "count": len(events),
-        "event_ids": processed,
-        "message": f"Batch of {len(events)} events received"
+        "event_ids": [e.event_id for e in events],
+        "message": f"Batch of {len(events)} events queued"
     }
