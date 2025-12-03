@@ -2,11 +2,12 @@
 Event ingestion routes.
 """
 
-from fastapi import APIRouter, HTTPException, status, Header
+from fastapi import APIRouter, HTTPException, status, Depends
 from typing import Optional
 import logging
 
 from schemas import EventEnvelope, EventIngestResponse, ErrorResponse
+from auth import APIKeyData, get_api_key
 
 
 logger = logging.getLogger("sentryai.ingest.events")
@@ -26,15 +27,18 @@ router = APIRouter()
         202: {"description": "Event accepted for processing"},
         400: {"model": ErrorResponse, "description": "Invalid event payload"},
         401: {"model": ErrorResponse, "description": "Missing API key"},
+        403: {"model": ErrorResponse, "description": "Invalid API key"},
         422: {"description": "Validation error"},
     }
 )
 async def ingest_event(
     event: EventEnvelope,
-    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    api_key: APIKeyData = Depends(get_api_key),
 ):
     """
     Ingest a single AI event.
+    
+    **Authentication Required:** Provide API key in `X-API-Key` header.
     
     Events are validated, enriched, and queued for processing.
     Returns 202 Accepted immediately (fire-and-forget).
@@ -53,19 +57,20 @@ async def ingest_event(
     - `custom` - Custom events
     """
     
-    # TODO: Task 4 - Validate API key
-    # For now, just log if missing
-    if not x_api_key:
-        logger.warning(f"Event received without API key: {event.event_id}")
-    
-    # Log the event (Task 3 - just print to console)
-    logger.info(f"📥 Event received:")
+    # Log authenticated request
+    logger.info(f"📥 Event received (auth: {api_key.project_id}):")
     logger.info(f"   ID: {event.event_id}")
     logger.info(f"   Project: {event.project_id}")
     logger.info(f"   Type: {event.type}")
     logger.info(f"   Timestamp: {event.timestamp}")
     logger.info(f"   SDK: {event.sdk.name} v{event.sdk.version}")
     logger.info(f"   Body: {event.body}")
+    
+    # Warn if event project_id doesn't match API key project
+    if event.project_id != api_key.project_id:
+        logger.warning(
+            f"Project mismatch: event={event.project_id}, key={api_key.project_id}"
+        )
     
     # TODO: Task 5 - Push to Redis queue instead of just logging
     # await queue.push(event)
@@ -85,14 +90,23 @@ async def ingest_event(
     "/events/batch",
     response_model=dict,
     status_code=status.HTTP_202_ACCEPTED,
+    responses={
+        202: {"description": "Batch accepted for processing"},
+        401: {"model": ErrorResponse, "description": "Missing API key"},
+        403: {"model": ErrorResponse, "description": "Invalid API key"},
+    }
 )
 async def ingest_events_batch(
     events: list[EventEnvelope],
-    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    api_key: APIKeyData = Depends(get_api_key),
 ):
     """
     Ingest multiple events in a single request.
+    
+    **Authentication Required:** Provide API key in `X-API-Key` header.
+    
     More efficient for SDKs that batch events.
+    Maximum 100 events per batch.
     """
     
     if len(events) > 100:
@@ -101,7 +115,7 @@ async def ingest_events_batch(
             detail="Maximum 100 events per batch"
         )
     
-    logger.info(f"📥 Batch received: {len(events)} events")
+    logger.info(f"📥 Batch received (auth: {api_key.project_id}): {len(events)} events")
     
     processed = []
     for event in events:
