@@ -1,17 +1,12 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 
+import EventsPage from './pages/EventsPage'
+
 // Placeholder pages
 const Dashboard = () => (
   <div className="p-8">
     <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
     <p className="text-gray-600">Stats overview coming soon...</p>
-  </div>
-)
-
-const Events = () => (
-  <div className="p-8">
-    <h1 className="text-3xl font-bold mb-4">Events</h1>
-    <p className="text-gray-600">Event timeline coming soon...</p>
   </div>
 )
 
@@ -43,7 +38,7 @@ function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/events" element={<Events />} />
+          <Route path="/events" element={<EventsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
