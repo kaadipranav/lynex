@@ -5,6 +5,7 @@ import DashboardPage from './pages/DashboardPage'
 import SettingsPage from './pages/SettingsPage'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
+import BillingPage from './pages/BillingPage'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 
 // Protected route wrapper
@@ -32,9 +33,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           <div className="flex items-center gap-8">
             <span className="text-xl font-bold text-indigo-600">SentryAI</span>
             <div className="flex gap-4 text-sm font-medium text-gray-600">
-              <a href="/" className="hover:text-indigo-600">Dashboard</a>
-              <a href="/events" className="hover:text-indigo-600">Events</a>
-              <a href="/settings" className="hover:text-indigo-600">Settings</a>
+            <a href="/" className="hover:text-indigo-600">Dashboard</a>
+            <a href="/events" className="hover:text-indigo-600">Events</a>
+            <a href="/settings" className="hover:text-indigo-600">Settings</a>
+            <a href="/billing" className="hover:text-indigo-600">Billing</a>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -69,12 +71,17 @@ function AppRoutes() {
         <ProtectedRoute>
           <Layout><EventsPage /></Layout>
         </ProtectedRoute>
-      } />
       <Route path="/settings" element={
         <ProtectedRoute>
           <Layout><SettingsPage /></Layout>
         </ProtectedRoute>
       } />
+      <Route path="/billing" element={
+        <ProtectedRoute>
+          <Layout><BillingPage /></Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="*" element={<Navigate to="/" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
