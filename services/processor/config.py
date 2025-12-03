@@ -64,6 +64,16 @@ class Settings(BaseSettings):
         description="Sentry DSN for error tracking"
     )
 
+    # ----- Alerting -----
+    alert_webhook_url: Optional[str] = Field(
+        default=None,
+        description="Webhook URL for alerts"
+    )
+    slack_webhook_url: Optional[str] = Field(
+        default=None,
+        description="Slack incoming webhook URL for alerts"
+    )
+
     class Config:
         env_file = "../../.env"  # Relative to processor directory
         env_file_encoding = "utf-8"

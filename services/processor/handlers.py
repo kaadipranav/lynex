@@ -8,6 +8,8 @@ from typing import Dict, Any
 from datetime import datetime
 
 import clickhouse
+import alerts
+import notifiers
 
 logger = logging.getLogger("sentryai.processor.handlers")
 
@@ -46,8 +48,10 @@ async def process_event(event: Dict[str, Any]):
         logger.error(f"Failed to write to ClickHouse: {e}")
         # Don't raise - event was processed, just not persisted
     
-    # TODO: Task 14 - Check alert rules
-    # await alerts.check_rules(enriched)
+    # Check alert rules and send notifications
+    triggered_alerts = alerts.evaluate_event(event, enriched)
+    for alert in triggered_alerts:
+        await notifiers.send_alert(alert)
     
     logger.debug(f"Event {event_id} processed successfully")
 
