@@ -58,7 +58,7 @@ Line 41: --- (separator)
 
 ## To Apply This Fix to Your Profile
 
-1. Copy the contents of `/home/runner/work/sentry-for-ai/sentry-for-ai/README.md` from this repository
+1. Copy the contents of the `README.md` file from this repository
 2. Go to your GitHub profile repository: `https://github.com/kaadipranav/kaadipranav`
 3. Edit the `README.md` file
 4. Replace the entire content with the corrected version
