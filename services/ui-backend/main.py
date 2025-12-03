@@ -36,11 +36,12 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 Sentry for AI - Query API starting...")
     logger.info(f"   Server: {settings.api_host}:{settings.api_port}")
     
-    try:
-        await ch.get_client()
+    # Connect to ClickHouse (will fallback to mock data if unavailable)
+    await ch.get_client()
+    if ch.is_using_mock():
+        logger.info("   ClickHouse: Using mock data 📦")
+    else:
         logger.info("   ClickHouse: Connected ✅")
-    except Exception as e:
-        logger.warning(f"   ClickHouse: Not available - {e}")
     
     yield
     

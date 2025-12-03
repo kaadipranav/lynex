@@ -12,7 +12,7 @@ import logging
 from config import settings
 from schemas import HealthResponse
 from routes.events import router as events_router
-import queue as event_queue
+import redis_queue as event_queue
 
 
 # =============================================================================

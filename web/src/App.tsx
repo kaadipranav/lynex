@@ -71,6 +71,7 @@ function AppRoutes() {
         <ProtectedRoute>
           <Layout><EventsPage /></Layout>
         </ProtectedRoute>
+      } />
       <Route path="/settings" element={
         <ProtectedRoute>
           <Layout><SettingsPage /></Layout>
@@ -81,7 +82,6 @@ function AppRoutes() {
           <Layout><BillingPage /></Layout>
         </ProtectedRoute>
       } />
-      <Route path="*" element={<Navigate to="/" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

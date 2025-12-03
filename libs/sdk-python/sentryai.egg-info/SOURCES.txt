@@ -1,0 +1,9 @@
+setup.py
+sentryai/__init__.py
+sentryai/client.py
+sentryai/decorators.py
+sentryai.egg-info/PKG-INFO
+sentryai.egg-info/SOURCES.txt
+sentryai.egg-info/dependency_links.txt
+sentryai.egg-info/requires.txt
+sentryai.egg-info/top_level.txt

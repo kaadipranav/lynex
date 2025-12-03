@@ -14,6 +14,7 @@ from config import settings
 
 logger = logging.getLogger("sentryai.processor.clickhouse")
 
+_use_mock_mode = False
 
 # =============================================================================
 # ClickHouse Client
@@ -41,6 +42,8 @@ class ClickHouseClient:
     
     async def connect(self):
         """Initialize the HTTP client."""
+        global _use_mock_mode
+        
         self.client = httpx.AsyncClient(
             base_url=self.base_url,
             auth=(self.user, self.password) if self.password else None,
@@ -52,8 +55,9 @@ class ClickHouseClient:
             result = await self.query("SELECT 1")
             logger.info(f"✅ ClickHouse connection established: {self.base_url}")
         except Exception as e:
-            logger.error(f"❌ ClickHouse connection failed: {e}")
-            raise
+            logger.warning(f"⚠️ ClickHouse not available: {e}")
+            logger.info("📦 Using mock mode (events will be logged but not stored)")
+            _use_mock_mode = True
     
     async def close(self):
         """Close the HTTP client and flush remaining events."""
@@ -66,6 +70,11 @@ class ClickHouseClient:
     
     async def query(self, sql: str, params: Dict[str, Any] = None) -> str:
         """Execute a query and return the result."""
+        global _use_mock_mode
+        
+        if _use_mock_mode:
+            return "1"
+            
         if not self.client:
             await self.connect()
         
@@ -86,6 +95,12 @@ class ClickHouseClient:
         Add an event to the buffer.
         Flushes automatically when buffer is full.
         """
+        global _use_mock_mode
+        
+        if _use_mock_mode:
+            logger.info(f"📦 [Mock] Would insert event: {event.get('event_id')}")
+            return
+
         self._buffer.append(event)
         
         if len(self._buffer) >= self._buffer_size:

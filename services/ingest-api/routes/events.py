@@ -8,7 +8,7 @@ import logging
 
 from schemas import EventEnvelope, EventIngestResponse, ErrorResponse
 from auth import APIKeyData, get_api_key
-import queue as event_queue
+import redis_queue as event_queue
 
 
 logger = logging.getLogger("sentryai.ingest.events")

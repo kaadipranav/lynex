@@ -6,6 +6,21 @@ Reads environment variables using pydantic-settings.
 from pydantic_settings import BaseSettings
 from pydantic import Field
 from typing import Optional
+from pathlib import Path
+
+
+def find_env_file():
+    """Find .env file in project root."""
+    current = Path(__file__).resolve().parent
+    for _ in range(5):
+        env_path = current / ".env"
+        if env_path.exists():
+            return str(env_path)
+        current = current.parent
+    return ".env"
+
+
+ENV_FILE = find_env_file()
 
 
 class Settings(BaseSettings):
@@ -75,9 +90,10 @@ class Settings(BaseSettings):
     )
 
     class Config:
-        env_file = "../../.env"  # Relative to processor directory
+        env_file = ENV_FILE
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "ignore"
 
 
 # Singleton instance
