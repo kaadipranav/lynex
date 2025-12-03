@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 
 import EventsPage from './pages/EventsPage'
 import DashboardPage from './pages/DashboardPage'
+import SettingsPage from './pages/SettingsPage'
 
 const Layout = ({ children }: { children: React.ReactNode }) => (
   <div className="min-h-screen bg-gray-50">
@@ -12,6 +13,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => (
           <div className="flex gap-4 text-sm font-medium text-gray-600">
             <a href="/" className="hover:text-indigo-600">Dashboard</a>
             <a href="/events" className="hover:text-indigo-600">Events</a>
+            <a href="/settings" className="hover:text-indigo-600">Settings</a>
           </div>
         </div>
         <div className="text-sm text-gray-500">
@@ -30,14 +32,14 @@ function App() {
     <Router>
       <Layout>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={<DashboardPage />} />
           <Route path="/events" element={<EventsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
     </Router>
-        <Routes>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/events" element={<EventsPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+  )
+}
+
+export default App
