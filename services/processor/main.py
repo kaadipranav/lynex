@@ -11,6 +11,7 @@ from datetime import datetime
 
 from consumer import EventConsumer
 from config import settings
+import clickhouse
 
 # =============================================================================
 # Logging Setup
@@ -45,6 +46,7 @@ async def main():
     logger.info("🚀 Sentry for AI - Processor Worker starting...")
     logger.info(f"   Debug mode: {settings.debug}")
     logger.info(f"   Redis: {settings.redis_url[:30]}...")
+    logger.info(f"   ClickHouse: {settings.clickhouse_host}:{settings.clickhouse_port}")
     
     # Create consumer
     consumer = EventConsumer()
@@ -52,6 +54,13 @@ async def main():
     try:
         # Initialize consumer (connect to Redis, create consumer group)
         await consumer.initialize()
+        
+        # Try to connect to ClickHouse (non-blocking)
+        try:
+            await clickhouse.get_clickhouse_client()
+            logger.info("   ClickHouse: Connected ✅")
+        except Exception as e:
+            logger.warning(f"   ClickHouse: Not available - {e}")
         
         # Start consuming events
         logger.info("📥 Starting event consumption loop...")
@@ -65,6 +74,7 @@ async def main():
     finally:
         # Cleanup
         await consumer.close()
+        await clickhouse.close_clickhouse_client()
         logger.info("👋 Processor Worker shut down complete")
 
 

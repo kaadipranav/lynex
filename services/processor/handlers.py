@@ -7,6 +7,8 @@ import logging
 from typing import Dict, Any
 from datetime import datetime
 
+import clickhouse
+
 logger = logging.getLogger("sentryai.processor.handlers")
 
 
@@ -21,7 +23,7 @@ async def process_event(event: Dict[str, Any]):
     This function:
     1. Enriches the event with additional metadata
     2. Computes derived fields (cost estimates, etc.)
-    3. Stores the event in ClickHouse (Task 7)
+    3. Stores the event in ClickHouse
     4. Checks alert rules (Task 14)
     """
     event_type = event.get("type")
@@ -37,8 +39,12 @@ async def process_event(event: Dict[str, Any]):
     handler = EVENT_HANDLERS.get(event_type, handle_unknown)
     await handler(enriched)
     
-    # TODO: Task 7 - Write to ClickHouse
-    # await clickhouse.insert_event(enriched)
+    # Write to ClickHouse
+    try:
+        await clickhouse.insert_event(enriched)
+    except Exception as e:
+        logger.error(f"Failed to write to ClickHouse: {e}")
+        # Don't raise - event was processed, just not persisted
     
     # TODO: Task 14 - Check alert rules
     # await alerts.check_rules(enriched)
