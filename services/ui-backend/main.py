@@ -12,6 +12,7 @@ from config import settings
 from routes.events import router as events_router
 from routes.stats import router as stats_router
 from routes.projects import router as projects_router
+from routes.auth import router as auth_router
 import clickhouse as ch
 
 # =============================================================================
@@ -97,7 +98,7 @@ async def health():
 app.include_router(events_router, prefix="/api/v1", tags=["Events"])
 app.include_router(stats_router, prefix="/api/v1", tags=["Statistics"])
 app.include_router(projects_router, prefix="/api/v1", tags=["Projects"])
-app.include_router(stats_router, prefix="/api/v1", tags=["Statistics"])
+app.include_router(auth_router, prefix="/api/v1", tags=["Authentication"])
 
 
 # =============================================================================
