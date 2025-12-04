@@ -87,15 +87,15 @@ async def list_events(
         count_result = await client.query(count_sql)
         events_result = await client.query(events_sql)
         
-        total = count_result["data"][0]["total"] if count_result["data"] else 0
+        total = count_result[0]["total"] if count_result else 0
         
         events = []
-        for row in events_result.get("data", []):
+        for row in events_result:
             events.append(EventResponse(
                 event_id=row["event_id"],
                 project_id=row["project_id"],
                 type=row["type"],
-                timestamp=datetime.fromisoformat(row["timestamp"]),
+                timestamp=row["timestamp"] if isinstance(row["timestamp"], datetime) else datetime.fromisoformat(row["timestamp"]),
                 sdk_name=row["sdk_name"],
                 sdk_version=row["sdk_version"],
                 body=json.loads(row["body"]) if isinstance(row["body"], str) else row["body"],
@@ -154,18 +154,18 @@ async def get_event(
         client = await ch.get_client()
         result = await client.query(sql)
         
-        if not result.get("data"):
+        if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"error": "Event not found"}
             )
         
-        row = result["data"][0]
+        row = result[0]
         return EventResponse(
             event_id=row["event_id"],
             project_id=row["project_id"],
             type=row["type"],
-            timestamp=datetime.fromisoformat(row["timestamp"]),
+            timestamp=row["timestamp"] if isinstance(row["timestamp"], datetime) else datetime.fromisoformat(row["timestamp"]),
             sdk_name=row["sdk_name"],
             sdk_version=row["sdk_version"],
             body=json.loads(row["body"]) if isinstance(row["body"], str) else row["body"],

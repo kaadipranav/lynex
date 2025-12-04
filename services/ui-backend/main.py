@@ -98,12 +98,13 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 Lynex - Query API starting...")
     logger.info(f"   Server: {settings.api_host}:{settings.api_port}")
     
-    # Connect to ClickHouse (will fallback to mock data if unavailable)
-    await ch.get_client()
-    if ch.is_using_mock():
-        logger.info("   ClickHouse: Using mock data 📦")
-    else:
+    # Connect to ClickHouse
+    try:
+        await ch.get_client()
         logger.info("   ClickHouse: Connected ✅")
+    except Exception as e:
+        logger.error(f"   ClickHouse: Connection failed ❌ - {e}")
+        # Depending on requirements, we could raise e to stop startup
     
     yield
     

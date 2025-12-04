@@ -92,12 +92,13 @@ async def main():
         # Initialize consumer (connect to Redis, create consumer group)
         await consumer.initialize()
         
-        # Try to connect to ClickHouse (non-blocking)
+        # Connect to ClickHouse
         try:
             await clickhouse.get_clickhouse_client()
             logger.info("   ClickHouse: Connected ✅")
         except Exception as e:
-            logger.warning(f"   ClickHouse: Not available - {e}")
+            logger.error(f"   ClickHouse: Connection failed ❌ - {e}")
+            logger.error("   Processor cannot function without ClickHouse.")
         
         # Start consuming events
         logger.info("📥 Starting event consumption loop...")

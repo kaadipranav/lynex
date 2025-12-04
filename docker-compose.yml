@@ -48,7 +48,7 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - CLICKHOUSE_HOST=clickhouse
-      - CLICKHOUSE_PORT=8123
+      - CLICKHOUSE_PORT=9000
       - CLICKHOUSE_USER=default
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
       - SENTRY_DSN=${SENTRY_DSN:-}
@@ -72,7 +72,7 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - CLICKHOUSE_HOST=clickhouse
-      - CLICKHOUSE_PORT=8123
+      - CLICKHOUSE_PORT=9000
       - CLICKHOUSE_USER=default
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
       - SENTRY_DSN=${SENTRY_DSN:-}
@@ -86,7 +86,7 @@ services:
       - clickhouse
     restart: unless-stopped
 
-  # UI Backend (Query API)
+  # UI Backend
   ui-backend:
     build:
       context: ./services/ui-backend
@@ -96,7 +96,7 @@ services:
       - "8000:8000"
     environment:
       - CLICKHOUSE_HOST=clickhouse
-      - CLICKHOUSE_PORT=8123
+      - CLICKHOUSE_PORT=9000
       - CLICKHOUSE_USER=default
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
       - SENTRY_DSN=${SENTRY_DSN:-}

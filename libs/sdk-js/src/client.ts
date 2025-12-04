@@ -1,17 +1,12 @@
-﻿import type { LynexConfig, LynexEvent, EventBody, TokenUsageBody } from './types';
+﻿import axios from 'axios';
+import { v4 as uuidv4 } from 'uuid';
+import type { LynexConfig, LynexEvent, EventBody, TokenUsageBody } from './types';
 
 const SDK_NAME = 'lynex-js';
 const SDK_VERSION = '0.1.0';
 
 function generateUUID(): string {
-  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+  return uuidv4();
 }
 
 export class Lynex {
@@ -26,7 +21,7 @@ export class Lynex {
     this.config = {
       apiKey: config.apiKey,
       projectId: config.projectId,
-      host: config.host?.replace(/\/$/, '') || 'http://localhost:8000',
+      host: config.host?.replace(/\/$/, '') || 'http://localhost:8001',
       batchSize: config.batchSize || 10,
       flushInterval: config.flushInterval || 5000,
       debug: config.debug || false,
@@ -158,8 +153,6 @@ export class Lynex {
     try {
       const url = `${this.config.host}/api/v1/events/batch`;
       
-      const fetchFn = typeof fetch !== 'undefined' ? fetch : require('node-fetch');
-      
       if (sync && typeof navigator !== 'undefined' && navigator.sendBeacon) {
         // Use sendBeacon for sync flush in browser
         navigator.sendBeacon(
@@ -168,21 +161,19 @@ export class Lynex {
         );
         this.log('Flushed via sendBeacon:', events.length, 'events');
       } else {
-        const response = await fetchFn(url, {
-          method: 'POST',
+        const response = await axios.post(url, { events }, {
           headers: {
             'Content-Type': 'application/json',
             'X-API-Key': this.config.apiKey,
           },
-          body: JSON.stringify({ events }),
         });
 
-        if (!response.ok) {
+        if (response.status >= 200 && response.status < 300) {
+          this.log('Flushed:', events.length, 'events');
+        } else {
           console.error('[Lynex] Flush failed:', response.status);
           // Re-queue events on failure
           this.queue.unshift(...events);
-        } else {
-          this.log('Flushed:', events.length, 'events');
         }
       }
     } catch (error) {

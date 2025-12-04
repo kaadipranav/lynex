@@ -5,3 +5,5 @@ python-dotenv>=1.0.0
 httpx>=0.25.0
 sentry-sdk[fastapi]>=1.40.0
 ddtrace>=2.0.0
+clickhouse-driver>=0.2.6
+tenacity>=8.2.0

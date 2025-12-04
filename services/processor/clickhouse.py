@@ -5,16 +5,17 @@ Handles writing events to ClickHouse for analytics.
 
 import json
 import logging
+import asyncio
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
-import httpx
+from clickhouse_driver import Client
+from clickhouse_driver.errors import NetworkError, ServerException
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from config import settings
 
 logger = logging.getLogger("lynex.processor.clickhouse")
-
-_use_mock_mode = False
 
 # =============================================================================
 # ClickHouse Client
@@ -22,18 +23,16 @@ _use_mock_mode = False
 
 class ClickHouseClient:
     """
-    Async ClickHouse client using HTTP interface.
-    
-    Uses httpx for async HTTP requests to ClickHouse's HTTP interface,
-    which is simpler than native protocol and works with all providers.
+    Async ClickHouse client using clickhouse-driver with connection pooling.
     """
     
     def __init__(self):
-        self.base_url = f"http://{settings.clickhouse_host}:{settings.clickhouse_port}"
+        self.host = settings.clickhouse_host
+        self.port = settings.clickhouse_port
         self.user = settings.clickhouse_user
         self.password = settings.clickhouse_password
         self.database = settings.clickhouse_database
-        self.client: Optional[httpx.AsyncClient] = None
+        self.client: Optional[Client] = None
         
         # Event buffer for batching
         self._buffer: List[Dict[str, Any]] = []
@@ -41,66 +40,63 @@ class ClickHouseClient:
         self._last_flush = datetime.utcnow()
     
     async def connect(self):
-        """Initialize the HTTP client."""
-        global _use_mock_mode
-        
-        self.client = httpx.AsyncClient(
-            base_url=self.base_url,
-            auth=(self.user, self.password) if self.password else None,
-            timeout=30.0,
-        )
-        
-        # Test connection
+        """Initialize the ClickHouse client."""
         try:
-            result = await self.query("SELECT 1")
-            logger.info(f"✅ ClickHouse connection established: {self.base_url}")
+            # Run connection in executor to avoid blocking
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, self._connect_sync)
+            logger.info(f"✅ ClickHouse connection established: {self.host}:{self.port}")
         except Exception as e:
-            logger.warning(f"⚠️ ClickHouse not available: {e}")
-            logger.info("📦 Using mock mode (events will be logged but not stored)")
-            _use_mock_mode = True
+            logger.error(f"❌ ClickHouse connection failed: {e}")
+            raise
+
+    def _connect_sync(self):
+        """Synchronous connection logic."""
+        self.client = Client(
+            host=self.host,
+            port=self.port,
+            user=self.user,
+            password=self.password,
+            database=self.database,
+            connect_timeout=10,
+            send_receive_timeout=30,
+            sync_request_timeout=30,
+        )
+        # Test connection
+        self.client.execute("SELECT 1")
     
     async def close(self):
-        """Close the HTTP client and flush remaining events."""
+        """Close the client and flush remaining events."""
         if self._buffer:
             await self.flush()
         
         if self.client:
-            await self.client.aclose()
+            self.client.disconnect()
             logger.info("ClickHouse connection closed")
     
-    async def query(self, sql: str, params: Dict[str, Any] = None) -> str:
+    async def query(self, sql: str, params: Dict[str, Any] = None) -> Any:
         """Execute a query and return the result."""
-        global _use_mock_mode
-        
-        if _use_mock_mode:
-            return "1"
-            
         if not self.client:
             await self.connect()
         
-        query_params = {"database": self.database}
-        if params:
-            query_params.update(params)
-        
-        response = await self.client.post(
-            "/",
-            params=query_params,
-            content=sql,
-        )
-        response.raise_for_status()
-        return response.text
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, self._query_sync, sql, params)
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        retry=retry_if_exception_type((NetworkError, ServerException))
+    )
+    def _query_sync(self, sql: str, params: Dict[str, Any] = None):
+        if not self.client:
+            self._connect_sync()
+        return self.client.execute(sql, params)
     
     async def insert_event(self, event: Dict[str, Any]):
         """
         Add an event to the buffer.
         Flushes automatically when buffer is full.
         """
-        global _use_mock_mode
-        
-        if _use_mock_mode:
-            logger.info(f"📦 [Mock] Would insert event: {event.get('event_id')}")
-            return
-
         self._buffer.append(event)
         
         if len(self._buffer) >= self._buffer_size:
@@ -125,7 +121,7 @@ class ClickHouseClient:
         self._buffer.clear()
         
         try:
-            # Build INSERT statement with JSONEachRow format
+            # Prepare rows for insertion
             rows = []
             for event in events_to_insert:
                 row = {
@@ -142,20 +138,10 @@ class ClickHouseClient:
                     "queue_latency_ms": event.get("queue_latency_ms", 0),
                     "estimated_cost_usd": event.get("estimated_cost_usd", 0),
                 }
-                rows.append(json.dumps(row))
+                rows.append(row)
             
-            data = "\n".join(rows)
-            
-            response = await self.client.post(
-                "/",
-                params={
-                    "database": self.database,
-                    "query": "INSERT INTO events FORMAT JSONEachRow",
-                },
-                content=data,
-                headers={"Content-Type": "application/json"},
-            )
-            response.raise_for_status()
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, self._insert_sync, rows)
             
             logger.info(f"✅ Flushed {len(events_to_insert)} events to ClickHouse")
             self._last_flush = datetime.utcnow()
@@ -165,6 +151,21 @@ class ClickHouseClient:
             # Put events back in buffer for retry
             self._buffer.extend(events_to_insert)
             raise
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        retry=retry_if_exception_type((NetworkError, ServerException))
+    )
+    def _insert_sync(self, rows: List[Dict[str, Any]]):
+        if not self.client:
+            self._connect_sync()
+        
+        self.client.execute(
+            "INSERT INTO events (event_id, project_id, type, timestamp, sdk_name, sdk_version, body, context, queued_at, processed_at, queue_latency_ms, estimated_cost_usd) VALUES",
+            rows
+        )
+
 
 
 # =============================================================================

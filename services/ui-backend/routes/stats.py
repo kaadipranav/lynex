@@ -59,7 +59,7 @@ async def get_overview_stats(
         client = await ch.get_client()
         result = await client.query(sql)
         
-        if not result.get("data"):
+        if not result:
             return OverviewStats(
                 total_events=0,
                 total_errors=0,
@@ -68,7 +68,7 @@ async def get_overview_stats(
                 total_tokens=0,
             )
         
-        row = result["data"][0]
+        row = result[0]
         total_events = row["total_events"]
         total_errors = row["total_errors"]
         
@@ -130,7 +130,7 @@ async def get_token_usage_by_model(
                 total_cost_usd=round(row["total_cost_usd"], 6),
                 request_count=row["request_count"],
             )
-            for row in result.get("data", [])
+            for row in result
         ]
         
     except Exception as e:
@@ -170,7 +170,7 @@ async def get_events_by_type(
         
         return [
             EventCountByType(type=row["type"], count=row["count"])
-            for row in result.get("data", [])
+            for row in result
         ]
         
     except Exception as e:
@@ -234,10 +234,10 @@ async def get_timeseries(
         
         data = [
             TimeSeriesPoint(
-                timestamp=datetime.fromisoformat(row["bucket"]),
+                timestamp=row["bucket"] if isinstance(row["bucket"], datetime) else datetime.fromisoformat(row["bucket"]),
                 value=float(row["value"]),
             )
-            for row in result.get("data", [])
+            for row in result
         ]
         
         return TimeSeriesResponse(metric=metric, data=data)
