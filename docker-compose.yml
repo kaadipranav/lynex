@@ -1,53 +1,156 @@
 version: '3.8'
 
 services:
-  # Redis Queue
+  # ==========================================
+  # Infrastructure
+  # ==========================================
+  
+  # ClickHouse - Analytics Database
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.8
+    ports:
+      - "8123:8123" # HTTP
+      - "9000:9000" # Native
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./infra/clickhouse/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis - Queue & Cache
   redis:
     image: redis:7-alpine
-    container_name: lynex-redis
     ports:
       - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
     volumes:
-      - redis-data:/data
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
-    restart: unless-stopped
 
-  # ClickHouse Database
-  clickhouse:
-    image: clickhouse/clickhouse-server:latest
-    container_name: lynex-clickhouse
+  # MongoDB - Application Data (Users, Projects)
+  mongodb:
+    image: mongo:6.0
     ports:
-      - "8123:8123"
-      - "9000:9000"
+      - "27017:27017"
     volumes:
-      - clickhouse-data:/var/lib/clickhouse
-      - ./infra/clickhouse/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+      - mongodb_data:/data/db
     environment:
-      CLICKHOUSE_DB: lynex
-      CLICKHOUSE_USER: default
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      - MONGO_INITDB_DATABASE=lynex
     healthcheck:
-      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
       interval: 10s
-      timeout: 5s
+      timeout: 10s
       retries: 5
-    restart: unless-stopped
 
-  # Ingest API
+  # ==========================================
+  # Services
+  # ==========================================
+
+  # Ingest API - High throughput event receiver
   ingest-api:
     build:
-      context: ./services/ingest-api
-      dockerfile: Dockerfile
-    container_name: lynex-ingest-api
+      context: .
+      dockerfile: services/ingest-api/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - ENV=development
+      - DEBUG=true
+      - REDIS_URL=redis://redis:6379
+      - CLICKHOUSE_HOST=clickhouse
+      - MONGO_URL=mongodb://mongodb:27017
+      - QUEUE_MODE=redis
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    volumes:
+      - ./services:/app/services
+      - ./libs:/app/libs
+
+  # Processor - Event consumer worker
+  processor:
+    build:
+      context: .
+      dockerfile: services/processor/Dockerfile
+    environment:
+      - ENV=development
+      - DEBUG=true
+      - REDIS_URL=redis://redis:6379
+      - CLICKHOUSE_HOST=clickhouse
+      - MONGO_URL=mongodb://mongodb:27017
+    depends_on:
+      redis:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    volumes:
+      - ./services:/app/services
+      - ./libs:/app/libs
+
+  # UI Backend - Dashboard API
+  ui-backend:
+    build:
+      context: .
+      dockerfile: services/ui-backend/Dockerfile
     ports:
       - "8001:8001"
     environment:
+      - ENV=development
+      - DEBUG=true
       - REDIS_URL=redis://redis:6379
       - CLICKHOUSE_HOST=clickhouse
+      - MONGO_URL=mongodb://mongodb:27017
+      - API_HOST=0.0.0.0
+      - API_PORT=8001
+    depends_on:
+      redis:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    volumes:
+      - ./services:/app/services
+      - ./libs:/app/libs
+
+  # Billing Service
+  billing:
+    build:
+      context: .
+      dockerfile: services/billing/Dockerfile
+    ports:
+      - "8002:8002"
+    environment:
+      - ENV=development
+      - DEBUG=true
+      - REDIS_URL=redis://redis:6379
+      - MONGO_URL=mongodb://mongodb:27017
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    volumes:
+      - ./services:/app/services
+      - ./libs:/app/libs
+
+volumes:
+  clickhouse_data:
+  redis_data:
+  mongodb_data:
       - CLICKHOUSE_PORT=9000
       - CLICKHOUSE_USER=default
       - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}

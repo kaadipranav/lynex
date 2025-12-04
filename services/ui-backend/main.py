@@ -7,12 +7,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
-
-import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.logging import LoggingIntegration
-
 import os
+import sys
+
+# Add shared module to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from shared.sentry_config import init_sentry
+from shared.logging_config import configure_logging
+from shared.database import db
+from sentry_sdk.integrations.fastapi import FastApiIntegration
 
 # Try to import ddtrace (may fail on Python 3.13+)
 try:
@@ -31,14 +35,16 @@ from routes.auth import router as auth_router
 from routes.admin import router as admin_router
 from routes.subscription import router as subscription_router
 import clickhouse as ch
+import redis_client
 
 # =============================================================================
 # Logging Setup
 # =============================================================================
 
-logging.basicConfig(
-    level=logging.DEBUG if settings.debug else logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+configure_logging(
+    service_name="ui-backend",
+    environment=settings.env,
+    log_level="DEBUG" if settings.debug else "INFO"
 )
 logger = logging.getLogger("lynex.query")
 
@@ -46,10 +52,6 @@ logger = logging.getLogger("lynex.query")
 # =============================================================================
 # Sentry Initialization
 # =============================================================================
-
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from shared.sentry_config import init_sentry
 
 init_sentry(
     dsn=settings.sentry_dsn,
@@ -88,8 +90,12 @@ else:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
-    logger.info("🚀 Lynex - Query API starting...")
+    logger.info("🚀 Lynex - UI Backend starting...")
     logger.info(f"   Server: {settings.api_host}:{settings.api_port}")
+    
+    # Connect to MongoDB
+    db.connect()
+    await db.ping()
     
     # Connect to ClickHouse
     try:
@@ -97,12 +103,25 @@ async def lifespan(app: FastAPI):
         logger.info("   ClickHouse: Connected ✅")
     except Exception as e:
         logger.error(f"   ClickHouse: Connection failed ❌ - {e}")
-        # Depending on requirements, we could raise e to stop startup
+        if settings.env == "production":
+            raise e
+
+    # Connect to Redis
+    try:
+        await redis_client.get_redis_client()
+        logger.info("   Redis: Connected ✅")
+    except Exception as e:
+        logger.error(f"   Redis: Connection failed ❌ - {e}")
+        if settings.env == "production":
+            raise e
     
     yield
     
-    logger.info("👋 Query API shutting down...")
-    await ch.close_client()
+    logger.info("🛑 Shutting down...")
+    db.close()
+    if ch._client:
+        await ch._client.close()
+    await redis_client.close_redis_client()
 
 
 # =============================================================================

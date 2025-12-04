@@ -2,25 +2,29 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+# Install system dependencies
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-COPY ui-backend/requirements.txt .
+# Copy shared code and libs
+COPY libs /app/libs
+COPY services/shared /app/services/shared
+
+# Copy service code
+COPY services/ui-backend /app/services/ui-backend
+
+# Install dependencies
+WORKDIR /app/services/ui-backend
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy shared module first
-COPY shared /app/shared
+# Install internal SDK
+RUN pip install -e /app/libs/sdk-python
 
-# Copy application code
-COPY ui-backend /app
+# Set Python path to include root for shared imports
+ENV PYTHONPATH=/app
 
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
-USER appuser
+# Expose port
+EXPOSE 8001
 
-EXPOSE 8000
+# Run application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD python -c "import requests; requests.get('http://localhost:8000/health', timeout=2)"
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

@@ -3,6 +3,14 @@ Project and API Key Management Routes.
 CRUD operations for projects and their API keys.
 """
 
+import sys
+from pathlib import Path
+
+# Add shared module to path
+shared_path = Path(__file__).resolve().parent.parent.parent / "shared"
+if str(shared_path) not in sys.path:
+    sys.path.insert(0, str(shared_path))
+
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, Field
 from typing import Optional, List
@@ -12,9 +20,9 @@ import secrets
 import hashlib
 
 from auth.supabase_middleware import require_user, User
+from shared.database import get_db
 
 router = APIRouter()
-
 
 
 # =============================================================================
@@ -61,52 +69,6 @@ class APIKeyWithSecret(APIKey):
 
 
 # =============================================================================
-# In-Memory Store (Replace with DB later)
-# =============================================================================
-
-# Projects store
-PROJECTS: dict[str, dict] = {
-    "proj_demo": {
-        "id": "proj_demo",
-        "name": "Demo Project",
-        "description": "Default demo project for testing",
-        "created_at": datetime(2024, 1, 1),
-        "updated_at": datetime(2024, 1, 1),
-    }
-}
-
-# API Keys store - key_hash -> key_data
-API_KEYS: dict[str, dict] = {}
-
-# Key lookup - key_prefix -> key_hash (for finding keys by prefix)
-KEY_PREFIX_INDEX: dict[str, str] = {}
-
-# Initialize demo keys
-def _init_demo_keys():
-    demo_keys = [
-        ("sk_test_demo1234567890abcdefghijklmno", "Demo Test Key", "test"),
-        ("sk_live_prod1234567890abcdefghijklmno", "Demo Live Key", "live"),
-    ]
-    for key, name, env in demo_keys:
-        key_hash = hashlib.sha256(key.encode()).hexdigest()
-        key_id = f"key_{uuid.uuid4().hex[:12]}"
-        API_KEYS[key_hash] = {
-            "id": key_id,
-            "project_id": "proj_demo",
-            "name": name,
-            "environment": env,
-            "key_prefix": key[:12],
-            "key_hash": key_hash,
-            "created_at": datetime(2024, 1, 1),
-            "last_used_at": None,
-            "is_active": True,
-        }
-        KEY_PREFIX_INDEX[key[:12]] = key_hash
-
-_init_demo_keys()
-
-
-# =============================================================================
 # Helper Functions
 # =============================================================================
 
@@ -127,13 +89,23 @@ def hash_key(key: str) -> str:
 # =============================================================================
 
 @router.get("/projects", response_model=List[Project])
-async def list_projects():
-    """List all projects."""
-    return [Project(**p) for p in PROJECTS.values()]
+async def list_projects(
+    user: User = Depends(require_user),
+    db = Depends(get_db)
+):
+    """List all projects for the current user."""
+    # In MVP, we just return all projects. In real app, filter by user.id
+    cursor = db.projects.find({})
+    projects = await cursor.to_list(length=100)
+    return [Project(**p) for p in projects]
 
 
 @router.post("/projects", response_model=Project, status_code=status.HTTP_201_CREATED)
-async def create_project(data: ProjectCreate):
+async def create_project(
+    data: ProjectCreate,
+    user: User = Depends(require_user),
+    db = Depends(get_db)
+):
     """Create a new project."""
     project_id = f"proj_{uuid.uuid4().hex[:12]}"
     now = datetime.utcnow()
@@ -144,10 +116,134 @@ async def create_project(data: ProjectCreate):
         "description": data.description,
         "created_at": now,
         "updated_at": now,
+        "owner_id": user.id  # Store owner
     }
     
-    PROJECTS[project_id] = project
+    await db.projects.insert_one(project)
     return Project(**project)
+
+
+@router.get("/projects/{project_id}", response_model=Project)
+async def get_project(
+    project_id: str,
+    user: User = Depends(require_user),
+    db = Depends(get_db)
+):
+    """Get a specific project."""
+    project = await db.projects.find_one({"id": project_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return Project(**project)
+
+
+@router.put("/projects/{project_id}", response_model=Project)
+async def update_project(
+    project_id: str,
+    data: ProjectUpdate,
+    user: User = Depends(require_user),
+    db = Depends(get_db)
+):
+    """Update a project."""
+    project = await db.projects.find_one({"id": project_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    update_data = {k: v for k, v in data.dict(exclude_unset=True).items()}
+    update_data["updated_at"] = datetime.utcnow()
+    
+    await db.projects.update_one({"id": project_id}, {"$set": update_data})
+    
+    updated_project = await db.projects.find_one({"id": project_id})
+    return Project(**updated_project)
+
+
+@router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_project(
+    project_id: str,
+    user: User = Depends(require_user),
+    db = Depends(get_db)
+):
+    """Delete a project."""
+    result = await db.projects.delete_one({"id": project_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Also delete associated API keys
+    await db.api_keys.delete_many({"project_id": project_id})
+    return None
+
+
+# =============================================================================
+# API Key Endpoints
+# =============================================================================
+
+@router.get("/projects/{project_id}/keys", response_model=List[APIKey])
+async def list_api_keys(
+    project_id: str,
+    user: User = Depends(require_user),
+    db = Depends(get_db)
+):
+    """List API keys for a project."""
+    # Verify project exists
+    project = await db.projects.find_one({"id": project_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    cursor = db.api_keys.find({"project_id": project_id})
+    keys = await cursor.to_list(length=100)
+    return [APIKey(**k) for k in keys]
+
+
+@router.post("/projects/{project_id}/keys", response_model=APIKeyWithSecret, status_code=status.HTTP_201_CREATED)
+async def create_api_key(
+    project_id: str,
+    data: APIKeyCreate,
+    user: User = Depends(require_user),
+    db = Depends(get_db)
+):
+    """Create a new API key."""
+    # Verify project exists
+    project = await db.projects.find_one({"id": project_id})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Generate key
+    raw_key = generate_api_key(data.environment)
+    key_hash = hash_key(raw_key)
+    key_id = f"key_{uuid.uuid4().hex[:12]}"
+    now = datetime.utcnow()
+    
+    api_key_doc = {
+        "id": key_id,
+        "project_id": project_id,
+        "name": data.name,
+        "environment": data.environment,
+        "key_prefix": raw_key[:12],
+        "key_hash": key_hash,
+        "created_at": now,
+        "last_used_at": None,
+        "is_active": True,
+    }
+    
+    await db.api_keys.insert_one(api_key_doc)
+    
+    # Return with secret key (only time it's shown)
+    return APIKeyWithSecret(**api_key_doc, key=raw_key)
+
+
+@router.delete("/projects/{project_id}/keys/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_api_key(
+    project_id: str,
+    key_id: str,
+    user: User = Depends(require_user),
+    db = Depends(get_db)
+):
+    """Revoke (delete) an API key."""
+    result = await db.api_keys.delete_one({"id": key_id, "project_id": project_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="API key not found")
+    return None
+
 
 
 @router.get("/projects/{project_id}", response_model=Project)

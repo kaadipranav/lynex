@@ -5,7 +5,17 @@ Handles subscriptions, usage tracking, and Whop integration.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 import logging
+import os
+import sys
+
+# Add shared module to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from shared.sentry_config import init_sentry
+from shared.logging_config import configure_logging
+from shared.database import db
 
 from config import settings
 from routes import router as billing_router
@@ -14,9 +24,10 @@ from routes import router as billing_router
 # Logging Setup
 # =============================================================================
 
-logging.basicConfig(
-    level=logging.DEBUG if settings.debug else logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+configure_logging(
+    service_name="billing",
+    environment=settings.env,
+    log_level="DEBUG" if settings.debug else "INFO"
 )
 logger = logging.getLogger("lynex.billing")
 
@@ -25,12 +36,7 @@ logger = logging.getLogger("lynex.billing")
 # Sentry Initialization
 # =============================================================================
 
-import sys
-import os
 from sentry_sdk.integrations.fastapi import FastApiIntegration
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from shared.sentry_config import init_sentry
 
 init_sentry(
     dsn=settings.sentry_dsn,
@@ -41,6 +47,25 @@ init_sentry(
 
 
 # =============================================================================
+# Lifespan
+# =============================================================================
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup and shutdown events."""
+    logger.info("🚀 Lynex - Billing Service starting...")
+    
+    # Connect to MongoDB
+    db.connect()
+    await db.ping()
+    
+    yield
+    
+    logger.info("🛑 Shutting down...")
+    db.close()
+
+
+# =============================================================================
 # FastAPI App
 # =============================================================================
 
@@ -48,6 +73,8 @@ app = FastAPI(
     title="Lynex - Billing Service",
     description="Subscription and usage management with Whop",
     version="1.0.0",
+    lifespan=lifespan,
+
     docs_url="/docs" if settings.debug else None,
 )
 

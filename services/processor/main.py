@@ -7,11 +7,17 @@ import asyncio
 import logging
 import signal
 import sys
+import os
 from datetime import datetime
 
-import sentry_sdk
+# Add shared module to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import os
+from shared.sentry_config import init_sentry
+from shared.logging_config import configure_logging
+from shared.database import db
+
+import sentry_sdk
 
 # Try to import ddtrace (may fail on Python 3.13+)
 try:
@@ -29,11 +35,23 @@ import clickhouse
 # Logging Setup
 # =============================================================================
 
-logging.basicConfig(
-    level=logging.DEBUG if settings.debug else logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+configure_logging(
+    service_name="processor",
+    environment=settings.env,
+    log_level="DEBUG" if settings.debug else "INFO"
 )
 logger = logging.getLogger("lynex.processor")
+
+
+# =============================================================================
+# Sentry Initialization
+# =============================================================================
+
+init_sentry(
+    dsn=settings.sentry_dsn,
+    environment=settings.env,
+    service_name="processor"
+)
 
 
 # =============================================================================
@@ -47,6 +65,7 @@ def signal_handler(sig, frame):
     """Handle shutdown signals."""
     logger.info(f"Received signal {sig}, initiating graceful shutdown...")
     shutdown_event.set()
+
 
 
 # =============================================================================
@@ -83,6 +102,10 @@ async def main():
     else:
         logger.info("ℹ️  Datadog APM disabled")
     
+    # Connect to MongoDB
+    db.connect()
+    await db.ping()
+    
     # Create consumer
     consumer = EventConsumer()
     
@@ -97,6 +120,7 @@ async def main():
         except Exception as e:
             logger.error(f"   ClickHouse: Connection failed ❌ - {e}")
             logger.error("   Processor cannot function without ClickHouse.")
+            raise e
         
         # Start consuming events
         logger.info("📥 Starting event consumption loop...")
@@ -109,6 +133,7 @@ async def main():
         sys.exit(1)
     finally:
         # Cleanup
+        db.close()
         await consumer.close()
         await clickhouse.close_clickhouse_client()
         logger.info("👋 Processor Worker shut down complete")

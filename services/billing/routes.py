@@ -2,6 +2,14 @@
 Billing API Routes.
 """
 
+import sys
+from pathlib import Path
+
+# Add shared module to path
+shared_path = Path(__file__).resolve().parent.parent.parent / "shared"
+if str(shared_path) not in sys.path:
+    sys.path.insert(0, str(shared_path))
+
 from fastapi import APIRouter, HTTPException, Request, Header, status
 from pydantic import BaseModel
 from typing import Optional
@@ -9,10 +17,10 @@ import logging
 
 from billing import (
     get_subscription,
-    get_usage_stats,
-    check_usage_limit,
-    update_subscription_from_whop,
-    get_whop_client,
+    # get_usage_stats, # Not implemented yet
+    # check_usage_limit, # Not implemented yet
+    # update_subscription_from_whop, # Not implemented yet
+    # get_whop_client, # Not implemented yet
     Subscription,
     SubscriptionTier,
     TIER_LIMITS,
@@ -48,6 +56,11 @@ async def get_user_subscription(user_id: str):
     limits = TIER_LIMITS[sub.tier]
     
     return {
+        "subscription": sub.dict(),
+        "limits": limits,
+        "usage_pct": (sub.events_used_this_period / limits["events_per_month"]) * 100
+    }
+
         "subscription": sub.dict(),
         "limits": limits,
     }

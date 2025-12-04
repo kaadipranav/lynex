@@ -10,10 +10,10 @@ COPY libs /app/libs
 COPY services/shared /app/services/shared
 
 # Copy service code
-COPY services/ingest-api /app/services/ingest-api
+COPY services/billing /app/services/billing
 
 # Install dependencies
-WORKDIR /app/services/ingest-api
+WORKDIR /app/services/billing
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install internal SDK
@@ -23,8 +23,7 @@ RUN pip install -e /app/libs/sdk-python
 ENV PYTHONPATH=/app
 
 # Expose port
-EXPOSE 8000
+EXPOSE 8002
 
 # Run application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002"]

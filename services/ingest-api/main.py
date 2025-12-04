@@ -8,12 +8,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import logging
-
-import sentry_sdk
-from sentry_sdk.integrations.fastapi import FastApiIntegration
-from sentry_sdk.integrations.logging import LoggingIntegration
-
 import os
+import sys
+
+# Add shared module to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from shared.sentry_config import init_sentry
+from shared.logging_config import configure_logging
+from shared.database import db
 
 # Try to import ddtrace (may fail on Python 3.13+)
 try:
@@ -34,9 +37,10 @@ import redis_queue as event_queue
 # Logging Setup
 # =============================================================================
 
-logging.basicConfig(
-    level=logging.DEBUG if settings.debug else logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+configure_logging(
+    service_name="ingest-api",
+    environment=settings.env,
+    log_level="DEBUG" if settings.debug else "INFO"
 )
 logger = logging.getLogger("lynex.ingest")
 
@@ -45,9 +49,13 @@ logger = logging.getLogger("lynex.ingest")
 # Sentry Initialization
 # =============================================================================
 
-import sys
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from shared.sentry_config import init_sentry
+init_sentry(
+    dsn=settings.sentry_dsn,
+    environment=settings.env,
+    service_name="ingest-api",
+    integrations=[FastApiIntegration(transaction_style="endpoint")]
+)
+
 
 init_sentry(
     dsn=settings.sentry_dsn,
@@ -91,17 +99,18 @@ async def lifespan(app: FastAPI):
     logger.info(f"   Debug mode: {settings.debug}")
     logger.info(f"   Server: {settings.api_host}:{settings.api_port}")
     
-    # Try to connect to Redis (non-blocking, will retry on first request)
-    try:
-        await event_queue.get_redis_client()
-        logger.info("   Redis: Connected ✅")
-    except Exception as e:
-        logger.warning(f"   Redis: Not available (will retry on requests) - {e}")
+    # Connect to MongoDB
+    db.connect()
+    await db.ping()
+    
+    # Connect to Redis
+    await event_queue.get_redis_client()
     
     yield
     
     # Shutdown
-    logger.info("👋 Lynex - Ingest API shutting down...")
+    logger.info("🛑 Shutting down...")
+    db.close()
     await event_queue.close_redis_client()
 
 

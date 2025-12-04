@@ -13,6 +13,7 @@ import uuid
 
 import redis.asyncio as redis
 from redis.exceptions import ConnectionError, TimeoutError
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from config import settings
 from schemas import EventEnvelope
@@ -34,6 +35,11 @@ _use_memory_queue = False
 _redis_client: Optional[redis.Redis] = None
 
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    retry=retry_if_exception_type((ConnectionError, TimeoutError))
+)
 async def get_redis_client() -> Optional[redis.Redis]:
     """Get or create Redis client singleton. Returns None if using memory queue."""
     global _redis_client, _use_memory_queue
@@ -56,12 +62,19 @@ async def get_redis_client() -> Optional[redis.Redis]:
             logger.info("✅ Redis connection established")
         except Exception as e:
             logger.error(f"❌ Redis connection failed: {e}")
-            logger.info("📦 Falling back to in-memory queue")
-            _redis_client = None
-            _use_memory_queue = True
-            return None
+            # Only fallback if explicitly allowed or in dev
+            if settings.env == "development":
+                logger.info("📦 Falling back to in-memory queue (DEV ONLY)")
+                _redis_client = None
+                _use_memory_queue = True
+                return None
+            else:
+                # In production, we want to fail hard if Redis is down
+                # Or implement a local disk buffer (advanced)
+                raise e
     
     return _redis_client
+
 
 
 async def close_redis_client():

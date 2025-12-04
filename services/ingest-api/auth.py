@@ -3,11 +3,22 @@ API Key Authentication Module.
 Handles API key validation and project scoping.
 """
 
-from fastapi import HTTPException, Security, status
+import sys
+from pathlib import Path
+
+# Add shared module to path
+shared_path = Path(__file__).resolve().parent.parent.parent / "shared"
+if str(shared_path) not in sys.path:
+    sys.path.insert(0, str(shared_path))
+
+from fastapi import HTTPException, Security, status, Depends
 from fastapi.security import APIKeyHeader
 from typing import Optional
 import logging
 import re
+import hashlib
+
+from shared.database import get_db
 
 logger = logging.getLogger("lynex.ingest.auth")
 
@@ -25,30 +36,6 @@ API_KEY_HEADER = APIKeyHeader(
 # Production: sk_live_<24+ chars>
 # Test: sk_test_<24+ chars>
 API_KEY_PATTERN = re.compile(r"^sk_(live|test)_[a-zA-Z0-9]{24,}$")
-
-
-# =============================================================================
-# Mock API Key Store (Replace with DB in Task 5+)
-# =============================================================================
-
-# For MVP, we use a hardcoded dictionary
-# In production, this would query Redis/Postgres
-MOCK_API_KEYS = {
-    "sk_test_demo1234567890abcdefghijklmno": {
-        "project_id": "proj_demo",
-        "name": "Demo Project",
-        "tier": "free",
-        "rate_limit": 1000,  # requests per minute
-        "active": True,
-    },
-    "sk_live_prod1234567890abcdefghijklmno": {
-        "project_id": "proj_production",
-        "name": "Production Project", 
-        "tier": "pro",
-        "rate_limit": 10000,
-        "active": True,
-    },
-}
 
 
 # =============================================================================
@@ -89,7 +76,7 @@ def validate_api_key_format(api_key: str) -> bool:
     return bool(API_KEY_PATTERN.match(api_key))
 
 
-def get_api_key_data(api_key: str) -> Optional[APIKeyData]:
+async def get_api_key_data(api_key: str, db) -> Optional[APIKeyData]:
     """
     Look up API key in the store.
     Returns APIKeyData if valid, None if not found.
@@ -98,24 +85,45 @@ def get_api_key_data(api_key: str) -> Optional[APIKeyData]:
     if not validate_api_key_format(api_key):
         return None
     
-    # Look up in mock store (replace with DB query later)
-    key_info = MOCK_API_KEYS.get(api_key)
-    if not key_info:
+    # Hash key for lookup
+    key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+    
+    # Look up in MongoDB
+    # TODO: Add Redis caching here for performance
+    key_doc = await db.api_keys.find_one({"key_hash": key_hash})
+    
+    if not key_doc:
+        # Fallback for demo keys if DB is empty (for testing)
+        if api_key == "sk_test_demo1234567890abcdefghijklmno":
+            return APIKeyData(
+                key=api_key,
+                project_id="proj_demo",
+                name="Demo Project",
+                tier="free",
+                rate_limit=1000,
+                is_test=True
+            )
         return None
     
     # Check if active
-    if not key_info.get("active", False):
+    if not key_doc.get("is_active", True):
         return None
     
     # Determine if test key
     is_test = api_key.startswith("sk_test_")
     
+    # Get project tier (could be cached or joined)
+    # For now, default to free if not found
+    # In real app, we'd fetch project -> organization -> subscription
+    tier = "free" 
+    rate_limit = 1000
+    
     return APIKeyData(
         key=api_key,
-        project_id=key_info["project_id"],
-        name=key_info["name"],
-        tier=key_info["tier"],
-        rate_limit=key_info["rate_limit"],
+        project_id=key_doc["project_id"],
+        name=key_doc["name"],
+        tier=tier,
+        rate_limit=rate_limit,
         is_test=is_test,
     )
 
@@ -126,6 +134,7 @@ def get_api_key_data(api_key: str) -> Optional[APIKeyData]:
 
 async def get_api_key(
     api_key: Optional[str] = Security(API_KEY_HEADER),
+    db = Depends(get_db)
 ) -> APIKeyData:
     """
     FastAPI dependency for API key authentication.
@@ -148,6 +157,22 @@ async def get_api_key(
     if not validate_api_key_format(api_key):
         logger.warning(f"Invalid API key format: {api_key[:10]}...")
         raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "Invalid API key format"}
+        )
+    
+    # Look up key
+    key_data = await get_api_key_data(api_key, db)
+    
+    if not key_data:
+        logger.warning(f"Unknown API key: {api_key[:10]}...")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"error": "Invalid API key"}
+        )
+        
+    return key_data
+
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={
                 "error": "Invalid API key format",

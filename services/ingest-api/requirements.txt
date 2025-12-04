@@ -7,3 +7,6 @@ redis>=5.0.0
 httpx>=0.25.0
 sentry-sdk[fastapi]>=1.40.0
 ddtrace>=2.0.0
+motor>=3.3.0
+dnspython>=2.4.0
+

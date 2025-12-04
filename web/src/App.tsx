@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom'
 
 import EventsPage from './pages/EventsPage'
 import DashboardPage from './pages/DashboardPage'
@@ -34,11 +34,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           <div className="flex items-center gap-8">
             <span className="text-xl font-bold text-indigo-600">Lynex</span>
             <div className="flex gap-4 text-sm font-medium text-gray-600">
-              <a href="/" className="hover:text-indigo-600">Dashboard</a>
-              <a href="/events" className="hover:text-indigo-600">Events</a>
-              <a href="/usage" className="hover:text-indigo-600">Usage</a>
-              <a href="/settings" className="hover:text-indigo-600">Settings</a>
-              <a href="/billing" className="hover:text-indigo-600">Billing</a>
+              <Link to="/" className="hover:text-indigo-600">Dashboard</Link>
+              <Link to="/events" className="hover:text-indigo-600">Events</Link>
+              <Link to="/usage" className="hover:text-indigo-600">Usage</Link>
+              <Link to="/settings" className="hover:text-indigo-600">Settings</Link>
+              <Link to="/billing" className="hover:text-indigo-600">Billing</Link>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -48,6 +48,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               className="text-sm text-gray-500 hover:text-red-600"
             >
               Logout
+
             </button>
           </div>
         </div>

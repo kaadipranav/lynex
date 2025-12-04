@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pydantic import BaseModel
 
 import httpx
+from shared.database import get_db
 
 logger = logging.getLogger("lynex.billing")
 
@@ -75,28 +76,48 @@ class UsageRecord(BaseModel):
 
 
 # =============================================================================
-# In-Memory Store (Replace with DB)
+# Database Operations
 # =============================================================================
 
-SUBSCRIPTIONS: Dict[str, dict] = {
-    "user_demo": {
-        "user_id": "user_demo",
-        "tier": SubscriptionTier.FREE,
-        "whop_membership_id": None,
-        "whop_plan_id": None,
-        "status": "active",
-        "current_period_start": datetime(2024, 12, 1),
-        "current_period_end": datetime(2025, 1, 1),
-        "events_used_this_period": 0,
-    }
-}
+async def get_subscription(user_id: str) -> Subscription:
+    """Get subscription for a user, creating default FREE tier if none exists."""
+    db = await get_db()
+    sub_doc = await db.subscriptions.find_one({"user_id": user_id})
+    
+    if not sub_doc:
+        # Create default free subscription
+        now = datetime.utcnow()
+        # End date is 100 years from now for free tier
+        end_date = datetime(now.year + 100, now.month, now.day)
+        
+        sub_doc = {
+            "user_id": user_id,
+            "tier": SubscriptionTier.FREE,
+            "whop_membership_id": None,
+            "whop_plan_id": None,
+            "status": "active",
+            "current_period_start": now,
+            "current_period_end": end_date,
+            "events_used_this_period": 0,
+        }
+        await db.subscriptions.insert_one(sub_doc)
+        
+    return Subscription(**sub_doc)
 
-USAGE_LOG: list[dict] = []
+
+async def update_usage(user_id: str, event_count: int = 1):
+    """Increment usage for the current period."""
+    db = await get_db()
+    await db.subscriptions.update_one(
+        {"user_id": user_id},
+        {"$inc": {"events_used_this_period": event_count}}
+    )
 
 
 # =============================================================================
 # Whop API Client
 # =============================================================================
+
 
 class WhopClient:
     """Client for Whop API interactions."""

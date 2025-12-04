@@ -10,6 +10,7 @@ from datetime import datetime
 
 import redis.asyncio as redis
 from redis.exceptions import ConnectionError, TimeoutError, ResponseError
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from config import settings
 from handlers import process_event
@@ -55,6 +56,12 @@ class EventConsumer:
         self.processed_count = 0
         self.error_count = 0
     
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((ConnectionError, TimeoutError, OSError)),
+        reraise=True
+    )
     async def initialize(self):
         """Initialize Redis connection and consumer group."""
         logger.info(f"Connecting to Redis: {settings.redis_url[:30]}...")
@@ -85,6 +92,10 @@ class EventConsumer:
                 logger.info(f"Consumer group '{CONSUMER_GROUP}' already exists")
             else:
                 raise
+        except Exception as e:
+             # If Redis is not ready, we want to retry
+             logger.warning(f"Failed to create consumer group: {e}")
+             raise e
         
         logger.info(f"Consumer name: {self.consumer_name}")
     

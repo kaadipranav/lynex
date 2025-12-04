@@ -11,3 +11,6 @@ clickhouse-driver>=0.2.6
 tenacity>=8.2.0
 supabase>=2.0.0
 redis>=5.0.0
+motor>=3.3.0
+dnspython>=2.4.0
+

@@ -50,8 +50,15 @@ class ClickHouseClient:
             logger.error(f"❌ ClickHouse connection failed: {e}")
             raise
 
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((NetworkError, ServerException, OSError)),
+        reraise=True
+    )
     def _connect_sync(self):
         """Synchronous connection logic."""
+        logger.info(f"Connecting to ClickHouse at {self.host}:{self.port}...")
         self.client = Client(
             host=self.host,
             port=self.port,
@@ -64,6 +71,7 @@ class ClickHouseClient:
         )
         # Test connection
         self.client.execute("SELECT 1")
+        logger.info("✅ ClickHouse connection established")
     
     async def close(self):
         """Close the client and flush remaining events."""
