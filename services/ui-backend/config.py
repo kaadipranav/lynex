@@ -32,6 +32,12 @@ class Settings(BaseSettings):
     clickhouse_password: str = Field(default="")
     clickhouse_database: str = Field(default="default")
 
+    # ----- Redis -----
+    redis_host: str = Field(default="localhost")
+    redis_port: int = Field(default=6379)
+    redis_db: int = Field(default=0)
+    redis_password: Optional[str] = Field(default=None)
+
     # ----- API Server -----
     api_host: str = Field(default="0.0.0.0")
     api_port: int = Field(default=8001)  # Different port from ingest API
@@ -70,6 +76,9 @@ class Settings(BaseSettings):
     supabase_anon_key: str = Field(..., description="Supabase Anon Key (Public)")
     supabase_service_key: str = Field(..., description="Supabase Service Role Key (Secret)")
     
+    # ----- Admin -----
+    admin_api_key: str = Field(..., description="Secret key for admin endpoints")
+
     # ----- CORS -----
     cors_origins: list[str] = Field(
         default=["http://localhost:3000", "http://localhost:5173"]

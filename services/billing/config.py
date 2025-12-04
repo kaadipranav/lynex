@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     api_host: str = Field(default="0.0.0.0")
     api_port: int = Field(default=8002)
     debug: bool = Field(default=True)
+    env: str = Field(default="development")
+
+    # ----- Monitoring -----
+    sentry_dsn: Optional[str] = Field(default=None)
 
     class Config:
         env_file = "../../.env"

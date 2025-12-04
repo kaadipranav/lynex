@@ -61,17 +61,15 @@ async def main():
     logger.info(f"   ClickHouse: {settings.clickhouse_host}:{settings.clickhouse_port}")
     
     # Initialize Sentry
-    if settings.sentry_dsn:
-        sentry_sdk.init(
-            dsn=settings.sentry_dsn,
-            environment=settings.env,
-            traces_sample_rate=1.0 if settings.debug else 0.1,
-            release=f"lynex-processor@1.0.0",
-            server_name="processor",
-        )
-        logger.info("✅ Sentry initialized for error tracking")
-    else:
-        logger.warning("⚠️  Sentry DSN not configured")
+    import sys
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+    from shared.sentry_config import init_sentry
+    
+    init_sentry(
+        dsn=settings.sentry_dsn,
+        environment=settings.env,
+        service_name="processor"
+    )
     
     # Initialize Datadog APM
     if settings.datadog_enabled and DDTRACE_AVAILABLE:

@@ -17,6 +17,7 @@ except ImportError:
 from schemas import EventEnvelope, EventIngestResponse, ErrorResponse
 from auth import APIKeyData, get_api_key
 import redis_queue as event_queue
+from rate_limit import check_rate_limit
 
 
 logger = logging.getLogger("lynex.ingest.events")
@@ -66,6 +67,13 @@ async def ingest_event(
     - `eval_metric` - Evaluation metrics
     - `custom` - Custom events
     """
+    # Check Rate Limit
+    is_allowed = await check_rate_limit(api_key.user_id)
+    if not is_allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Monthly event limit exceeded for your tier."
+        )
     
     # Start custom trace span for Datadog (if available)
     span_context = tracer.trace("event.ingest", service="lynex-ingest-api") if DDTRACE_AVAILABLE and tracer else None

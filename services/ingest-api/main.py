@@ -45,26 +45,16 @@ logger = logging.getLogger("lynex.ingest")
 # Sentry Initialization
 # =============================================================================
 
-if settings.sentry_dsn:
-    sentry_sdk.init(
-        dsn=settings.sentry_dsn,
-        environment=settings.env,
-        traces_sample_rate=1.0 if settings.debug else 0.1,
-        profiles_sample_rate=1.0 if settings.debug else 0.1,
-        integrations=[
-            FastApiIntegration(transaction_style="endpoint"),
-            LoggingIntegration(
-                level=logging.INFO,
-                event_level=logging.ERROR
-            ),
-        ],
-        # Additional metadata
-        release=f"lynex-ingest@1.0.0",
-        server_name="ingest-api",
-    )
-    logger.info("✅ Sentry initialized for error tracking")
-else:
-    logger.warning("⚠️  Sentry DSN not configured - error tracking disabled")
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from shared.sentry_config import init_sentry
+
+init_sentry(
+    dsn=settings.sentry_dsn,
+    environment=settings.env,
+    service_name="ingest-api",
+    integrations=[FastApiIntegration(transaction_style="endpoint")]
+)
 
 
 # =============================================================================

@@ -28,6 +28,8 @@ from routes.events import router as events_router
 from routes.stats import router as stats_router
 from routes.projects import router as projects_router
 from routes.auth import router as auth_router
+from routes.admin import router as admin_router
+from routes.subscription import router as subscription_router
 import clickhouse as ch
 
 # =============================================================================
@@ -45,25 +47,16 @@ logger = logging.getLogger("lynex.query")
 # Sentry Initialization
 # =============================================================================
 
-if settings.sentry_dsn:
-    sentry_sdk.init(
-        dsn=settings.sentry_dsn,
-        environment=settings.env,
-        traces_sample_rate=1.0 if settings.debug else 0.1,
-        profiles_sample_rate=1.0 if settings.debug else 0.1,
-        integrations=[
-            FastApiIntegration(transaction_style="endpoint"),
-            LoggingIntegration(
-                level=logging.INFO,
-                event_level=logging.ERROR
-            ),
-        ],
-        release=f"lynex-ui-backend@1.0.0",
-        server_name="ui-backend",
-    )
-    logger.info("✅ Sentry initialized for error tracking")
-else:
-    logger.warning("⚠️  Sentry DSN not configured - error tracking disabled")
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from shared.sentry_config import init_sentry
+
+init_sentry(
+    dsn=settings.sentry_dsn,
+    environment=settings.env,
+    service_name="ui-backend",
+    integrations=[FastApiIntegration(transaction_style="endpoint")]
+)
 
 
 # =============================================================================
@@ -163,6 +156,8 @@ app.include_router(events_router, prefix="/api/v1", tags=["Events"])
 app.include_router(stats_router, prefix="/api/v1", tags=["Statistics"])
 app.include_router(projects_router, prefix="/api/v1", tags=["Projects"])
 app.include_router(auth_router, prefix="/api/v1", tags=["Authentication"])
+app.include_router(subscription_router, prefix="/api/v1", tags=["Subscription"])
+app.include_router(admin_router, prefix="/api/v1", tags=["Admin"])
 
 
 # =============================================================================

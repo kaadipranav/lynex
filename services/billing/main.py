@@ -22,6 +22,25 @@ logger = logging.getLogger("lynex.billing")
 
 
 # =============================================================================
+# Sentry Initialization
+# =============================================================================
+
+import sys
+import os
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from shared.sentry_config import init_sentry
+
+init_sentry(
+    dsn=settings.sentry_dsn,
+    environment=settings.env,
+    service_name="billing",
+    integrations=[FastApiIntegration(transaction_style="endpoint")]
+)
+
+
+# =============================================================================
 # FastAPI App
 # =============================================================================
 
