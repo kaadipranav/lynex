@@ -8,9 +8,10 @@ services:
   # ClickHouse - Analytics Database
   clickhouse:
     image: clickhouse/clickhouse-server:23.8
+    container_name: lynex-clickhouse
     ports:
-      - "8123:8123" # HTTP
-      - "9000:9000" # Native
+      - "8123:8123"  # HTTP
+      - "9000:9000"  # Native
     ulimits:
       nofile:
         soft: 262144
@@ -27,6 +28,7 @@ services:
   # Redis - Queue & Cache
   redis:
     image: redis:7-alpine
+    container_name: lynex-redis
     ports:
       - "6379:6379"
     command: redis-server --save 60 1 --loglevel warning
@@ -41,6 +43,7 @@ services:
   # MongoDB - Application Data (Users, Projects)
   mongodb:
     image: mongo:6.0
+    container_name: lynex-mongodb
     ports:
       - "27017:27017"
     volumes:
@@ -62,6 +65,7 @@ services:
     build:
       context: .
       dockerfile: services/ingest-api/Dockerfile
+    container_name: lynex-ingest-api
     ports:
       - "8000:8000"
     environment:
@@ -69,42 +73,46 @@ services:
       - DEBUG=true
       - REDIS_URL=redis://redis:6379
       - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_PORT=9000
       - MONGO_URL=mongodb://mongodb:27017
+      - MONGO_DB_NAME=lynex
       - QUEUE_MODE=redis
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
     depends_on:
       redis:
         condition: service_healthy
       mongodb:
         condition: service_healthy
-    volumes:
-      - ./services:/app/services
-      - ./libs:/app/libs
+    restart: unless-stopped
 
   # Processor - Event consumer worker
   processor:
     build:
       context: .
       dockerfile: services/processor/Dockerfile
+    container_name: lynex-processor
     environment:
       - ENV=development
       - DEBUG=true
       - REDIS_URL=redis://redis:6379
       - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_PORT=9000
       - MONGO_URL=mongodb://mongodb:27017
+      - MONGO_DB_NAME=lynex
     depends_on:
       redis:
         condition: service_healthy
       clickhouse:
         condition: service_healthy
-    volumes:
-      - ./services:/app/services
-      - ./libs:/app/libs
+    restart: unless-stopped
 
   # UI Backend - Dashboard API
   ui-backend:
     build:
       context: .
       dockerfile: services/ui-backend/Dockerfile
+    container_name: lynex-ui-backend
     ports:
       - "8001:8001"
     environment:
@@ -112,9 +120,14 @@ services:
       - DEBUG=true
       - REDIS_URL=redis://redis:6379
       - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_PORT=9000
       - MONGO_URL=mongodb://mongodb:27017
+      - MONGO_DB_NAME=lynex
       - API_HOST=0.0.0.0
       - API_PORT=8001
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-}
     depends_on:
       redis:
         condition: service_healthy
@@ -122,15 +135,14 @@ services:
         condition: service_healthy
       mongodb:
         condition: service_healthy
-    volumes:
-      - ./services:/app/services
-      - ./libs:/app/libs
+    restart: unless-stopped
 
   # Billing Service
   billing:
     build:
       context: .
       dockerfile: services/billing/Dockerfile
+    container_name: lynex-billing
     ports:
       - "8002:8002"
     environment:
@@ -138,117 +150,17 @@ services:
       - DEBUG=true
       - REDIS_URL=redis://redis:6379
       - MONGO_URL=mongodb://mongodb:27017
+      - MONGO_DB_NAME=lynex
+      - API_HOST=0.0.0.0
+      - API_PORT=8002
     depends_on:
       redis:
         condition: service_healthy
       mongodb:
         condition: service_healthy
-    volumes:
-      - ./services:/app/services
-      - ./libs:/app/libs
+    restart: unless-stopped
 
 volumes:
   clickhouse_data:
   redis_data:
   mongodb_data:
-      - CLICKHOUSE_PORT=9000
-      - CLICKHOUSE_USER=default
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
-      - SENTRY_DSN=${SENTRY_DSN:-}
-      - ENV=${ENV:-development}
-      - DATADOG_ENABLED=${DATADOG_ENABLED:-false}
-      - DD_SERVICE=lynex-ingest-api
-      - DD_ENV=${ENV:-development}
-      - DD_AGENT_HOST=datadog-agent
-      - API_PORT=8001
-    depends_on:
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-
-  # Processor Worker
-  processor:
-    build:
-      context: ./services/processor
-      dockerfile: Dockerfile
-    container_name: lynex-processor
-    environment:
-      - REDIS_URL=redis://redis:6379
-      - CLICKHOUSE_HOST=clickhouse
-      - CLICKHOUSE_PORT=9000
-      - CLICKHOUSE_USER=default
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
-      - SENTRY_DSN=${SENTRY_DSN:-}
-      - ENV=${ENV:-development}
-      - DATADOG_ENABLED=${DATADOG_ENABLED:-false}
-      - DD_SERVICE=lynex-processor
-      - DD_ENV=${ENV:-development}
-      - DD_AGENT_HOST=datadog-agent
-    depends_on:
-      - redis
-      - clickhouse
-    restart: unless-stopped
-
-  # UI Backend
-  ui-backend:
-    build:
-      context: ./services/ui-backend
-      dockerfile: Dockerfile
-    container_name: lynex-ui-backend
-    ports:
-      - "8000:8000"
-    environment:
-      - CLICKHOUSE_HOST=clickhouse
-      - CLICKHOUSE_PORT=9000
-      - CLICKHOUSE_USER=default
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
-      - SENTRY_DSN=${SENTRY_DSN:-}
-      - ENV=${ENV:-development}
-      - DATADOG_ENABLED=${DATADOG_ENABLED:-false}
-      - DD_SERVICE=lynex-ui-backend
-      - DD_ENV=${ENV:-development}
-      - DD_AGENT_HOST=datadog-agent
-      - API_PORT=8000
-    depends_on:
-      clickhouse:
-        condition: service_healthy
-    restart: unless-stopped
-
-  # Frontend (React App)
-  web:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-    container_name: lynex-web
-    ports:
-      - "5173:80"
-    environment:
-      - VITE_API_URL=http://localhost:8000
-    depends_on:
-      - ui-backend
-    restart: unless-stopped
-
-  # Datadog Agent (Optional - for production monitoring)
-  datadog-agent:
-    image: gcr.io/datadoghq/agent:latest
-    container_name: datadog-agent
-    environment:
-      - DD_API_KEY=${DATADOG_API_KEY:-}
-      - DD_SITE=datadoghq.com
-      - DD_LOGS_ENABLED=true
-      - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
-      - DD_CONTAINER_EXCLUDE="name:datadog-agent"
-      - DD_APM_ENABLED=true
-      - DD_APM_NON_LOCAL_TRAFFIC=true
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /proc/:/host/proc/:ro
-      - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
-    ports:
-      - "8126:8126"  # APM
-    profiles:
-      - monitoring  # Only start with: docker-compose --profile monitoring up
-
-volumes:
-  redis-data:
-  clickhouse-data:

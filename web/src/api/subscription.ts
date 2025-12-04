@@ -1,4 +1,4 @@
-import { client } from './client';
+import { apiClient } from './client';
 
 export interface UsageStats {
   tier: 'free' | 'pro' | 'enterprise';
@@ -8,6 +8,6 @@ export interface UsageStats {
 }
 
 export const getUsageStats = async (): Promise<UsageStats> => {
-  const response = await client.get('/subscription/usage');
+  const response = await apiClient.get('/subscription/usage');
   return response.data;
 };
