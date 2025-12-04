@@ -2,7 +2,7 @@
 Statistics and aggregation routes.
 """
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status, Depends
 from typing import Optional, List
 from datetime import datetime, timedelta
 import logging
@@ -16,6 +16,7 @@ from schemas import (
     ErrorResponse,
 )
 import clickhouse as ch
+from auth.supabase_middleware import require_user, User
 
 logger = logging.getLogger("lynex.query.stats")
 router = APIRouter()
@@ -28,6 +29,7 @@ router = APIRouter()
 async def get_overview_stats(
     project_id: str = Query(..., description="Project ID"),
     hours: int = Query(24, ge=1, le=720, description="Time window in hours"),
+    user: User = Depends(require_user),
 ):
     """
     Get overview statistics for the dashboard.

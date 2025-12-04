@@ -3,7 +3,7 @@ Project and API Key Management Routes.
 CRUD operations for projects and their API keys.
 """
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
@@ -11,7 +11,10 @@ import uuid
 import secrets
 import hashlib
 
+from auth.supabase_middleware import require_user, User
+
 router = APIRouter()
+
 
 
 # =============================================================================

@@ -1,12 +1,11 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authApi, User } from '../api/auth';
+import { supabase } from '../lib/supabase';
+import { User } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, name?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -17,35 +16,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session on mount
-    const storedUser = authApi.getUser();
-    if (storedUser && authApi.isAuthenticated()) {
-      setUser(storedUser);
-      // Optionally verify token is still valid
-      authApi.getMe()
-        .then(setUser)
-        .catch(() => {
-          // Token expired, clear auth
-          authApi.logout();
-          setUser(null);
-        });
-    }
-    setIsLoading(false);
+    // Check active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const response = await authApi.login(email, password);
-    setUser(response.user);
-  };
-
-  const signup = async (email: string, password: string, name?: string) => {
-    const response = await authApi.signup(email, password, name);
-    setUser(response.user);
-  };
-
   const logout = async () => {
-    await authApi.logout();
-    setUser(null);
+    await supabase.auth.signOut();
   };
 
   return (
@@ -53,8 +41,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       isLoading,
       isAuthenticated: !!user,
-      login,
-      signup,
       logout,
     }}>
       {children}

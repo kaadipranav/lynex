@@ -2,7 +2,7 @@
 Event query routes.
 """
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status, Depends
 from typing import Optional
 from datetime import datetime, timedelta
 import json
@@ -10,6 +10,7 @@ import logging
 
 from schemas import EventResponse, EventListResponse, ErrorResponse
 import clickhouse as ch
+from auth.supabase_middleware import require_user, User
 
 logger = logging.getLogger("lynex.query.events")
 router = APIRouter()
@@ -29,6 +30,7 @@ async def list_events(
     offset: int = Query(0, ge=0, description="Pagination offset"),
     start_time: Optional[datetime] = Query(None, description="Start time filter"),
     end_time: Optional[datetime] = Query(None, description="End time filter"),
+    user: User = Depends(require_user),
 ):
     """
     List events for a project with filters and pagination.

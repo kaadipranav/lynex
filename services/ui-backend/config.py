@@ -65,10 +65,10 @@ class Settings(BaseSettings):
         description="Application version for Datadog"
     )
 
-    # ----- Auth -----
-    jwt_secret: str = Field(default="dev-secret-change-in-production")
-    jwt_algorithm: str = Field(default="HS256")
-    jwt_expiration_hours: int = Field(default=24)
+    # ----- Auth (Supabase) -----
+    supabase_url: str = Field(..., description="Supabase Project URL")
+    supabase_anon_key: str = Field(..., description="Supabase Anon Key (Public)")
+    supabase_service_key: str = Field(..., description="Supabase Service Role Key (Secret)")
     
     # ----- CORS -----
     cors_origins: list[str] = Field(
