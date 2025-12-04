@@ -1,8 +1,8 @@
 Metadata-Version: 2.4
-Name: sentryai
+Name: lynex
 Version: 0.1.0
-Summary: Python SDK for Sentry for AI
-Author: SentryAI Team
+Summary: Python SDK for Lynex
+Author: Lynex Team
 Requires-Python: >=3.8
 Requires-Dist: requests>=2.25.0
 Requires-Dist: pydantic>=2.0.0

@@ -1,6 +1,6 @@
-import type { SentryAIConfig, SentryAIEvent, EventBody, TokenUsageBody } from './types';
+﻿import type { LynexConfig, LynexEvent, EventBody, TokenUsageBody } from './types';
 
-const SDK_NAME = 'sentryai-js';
+const SDK_NAME = 'lynex-js';
 const SDK_VERSION = '0.1.0';
 
 function generateUUID(): string {
@@ -14,15 +14,15 @@ function generateUUID(): string {
   });
 }
 
-export class SentryAI {
-  private static instance: SentryAI | null = null;
+export class Lynex {
+  private static instance: Lynex | null = null;
   
-  private config: Required<SentryAIConfig>;
-  private queue: SentryAIEvent[] = [];
+  private config: Required<LynexConfig>;
+  private queue: LynexEvent[] = [];
   private flushTimer: ReturnType<typeof setInterval> | null = null;
   private isFlushing = false;
 
-  constructor(config: SentryAIConfig) {
+  constructor(config: LynexConfig) {
     this.config = {
       apiKey: config.apiKey,
       projectId: config.projectId,
@@ -34,27 +34,27 @@ export class SentryAI {
 
     this.startFlushTimer();
     this.setupShutdownHandlers();
-    SentryAI.instance = this;
+    Lynex.instance = this;
   }
 
-  static init(config: SentryAIConfig): SentryAI {
-    if (SentryAI.instance) {
-      console.warn('SentryAI already initialized');
-      return SentryAI.instance;
+  static init(config: LynexConfig): Lynex {
+    if (Lynex.instance) {
+      console.warn('Lynex already initialized');
+      return Lynex.instance;
     }
-    return new SentryAI(config);
+    return new Lynex(config);
   }
 
-  static getInstance(): SentryAI {
-    if (!SentryAI.instance) {
-      throw new Error('SentryAI not initialized. Call SentryAI.init() first.');
+  static getInstance(): Lynex {
+    if (!Lynex.instance) {
+      throw new Error('Lynex not initialized. Call Lynex.init() first.');
     }
-    return SentryAI.instance;
+    return Lynex.instance;
   }
 
   private log(...args: any[]) {
     if (this.config.debug) {
-      console.log('[SentryAI]', ...args);
+      console.log('[Lynex]', ...args);
     }
   }
 
@@ -87,7 +87,7 @@ export class SentryAI {
   }
 
   captureEvent(type: string, body: EventBody, context?: Record<string, any>) {
-    const event: SentryAIEvent = {
+    const event: LynexEvent = {
       eventId: generateUUID(),
       projectId: this.config.projectId,
       type,
@@ -178,7 +178,7 @@ export class SentryAI {
         });
 
         if (!response.ok) {
-          console.error('[SentryAI] Flush failed:', response.status);
+          console.error('[Lynex] Flush failed:', response.status);
           // Re-queue events on failure
           this.queue.unshift(...events);
         } else {
@@ -186,7 +186,7 @@ export class SentryAI {
         }
       }
     } catch (error) {
-      console.error('[SentryAI] Flush error:', error);
+      console.error('[Lynex] Flush error:', error);
       // Re-queue events on failure
       this.queue.unshift(...events);
     } finally {

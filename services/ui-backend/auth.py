@@ -1,4 +1,4 @@
-"""
+﻿"""
 Authentication module using Appwrite.
 For MVP, includes a local fallback if Appwrite is not configured.
 """
@@ -13,7 +13,7 @@ import jwt
 
 from config import settings
 
-logger = logging.getLogger("sentryai.auth")
+logger = logging.getLogger("lynex.auth")
 
 
 # =============================================================================
@@ -57,7 +57,7 @@ class AuthResponse(BaseModel):
 USERS: dict[str, dict] = {
     "user_demo": {
         "id": "user_demo",
-        "email": "demo@sentryai.dev",
+        "email": "demo@lynex.dev",
         "name": "Demo User",
         "password_hash": hashlib.sha256("demo123".encode()).hexdigest(),
         "created_at": datetime(2024, 1, 1),

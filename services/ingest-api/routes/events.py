@@ -1,4 +1,4 @@
-"""
+﻿"""
 Event ingestion routes.
 """
 
@@ -11,7 +11,7 @@ from auth import APIKeyData, get_api_key
 import redis_queue as event_queue
 
 
-logger = logging.getLogger("sentryai.ingest.events")
+logger = logging.getLogger("lynex.ingest.events")
 
 router = APIRouter()
 

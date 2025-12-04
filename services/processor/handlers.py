@@ -1,4 +1,4 @@
-"""
+﻿"""
 Event Processing Handlers.
 This is where the actual event processing logic lives.
 """
@@ -11,7 +11,7 @@ import clickhouse
 import alerts
 import notifiers
 
-logger = logging.getLogger("sentryai.processor.handlers")
+logger = logging.getLogger("lynex.processor.handlers")
 
 
 # =============================================================================

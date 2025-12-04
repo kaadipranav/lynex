@@ -1,10 +1,10 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="sentryai",
+    name="lynex",
     version="0.1.0",
-    description="Python SDK for Sentry for AI",
-    author="SentryAI Team",
+    description="Python SDK for Lynex",
+    author="Lynex Team",
     packages=find_packages(),
     install_requires=[
         "requests>=2.25.0",

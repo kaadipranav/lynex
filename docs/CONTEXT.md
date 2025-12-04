@@ -1,4 +1,4 @@
-# CONTEXT — Sentry for AI (Product Brain)
+# CONTEXT — Lynex (Product Brain)
 
 > This file is the single source of truth (the "brain") for the product: a full, exhaustive specification that guides engineering, product, marketing, sales, legal, and ops toward building a high‑MRR, high‑valuation AI observability platform.
 

@@ -1,4 +1,4 @@
-"""
+﻿"""
 ClickHouse Client Module.
 Handles writing events to ClickHouse for analytics.
 """
@@ -12,7 +12,7 @@ import httpx
 
 from config import settings
 
-logger = logging.getLogger("sentryai.processor.clickhouse")
+logger = logging.getLogger("lynex.processor.clickhouse")
 
 _use_mock_mode = False
 

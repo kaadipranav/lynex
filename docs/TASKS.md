@@ -1,4 +1,4 @@
-# MVP Task Breakdown — Sentry for AI
+﻿# MVP Task Breakdown — Lynex
 
 > **Goal:** Ship a working MVP that can ingest AI events, store them, and display them on a dashboard.
 > **Timeline:** 2-3 weeks (working solo with AI assistance).
@@ -264,20 +264,20 @@
 **Status:** Not Started
 **Model:** Claude Sonnet 4.5
 **Files to Create:**
-- `/libs/sdk-python/sentryai/__init__.py`
-- `/libs/sdk-python/sentryai/client.py`
-- `/libs/sdk-python/sentryai/events.py`
+- `/libs/sdk-python/lynex/__init__.py`
+- `/libs/sdk-python/lynex/client.py`
+- `/libs/sdk-python/lynex/events.py`
 - `/libs/sdk-python/setup.py` or `pyproject.toml`
 
 **Detailed Requirements:**
 1. **Initialize:**
    ```python
-   import sentryai
-   sentryai.init(api_key="sk_live_xxx", project_id="proj_xxx")
+   import lynex
+   lynex.init(api_key="sk_live_xxx", project_id="proj_xxx")
    ```
 2. **Capture Event:**
    ```python
-   sentryai.capture_llm_call(
+   lynex.capture_llm_call(
        model="gpt-4",
        prompt="Hello",
        response="Hi there!",
@@ -307,8 +307,8 @@
 **Detailed Requirements:**
 1. **Initialize:**
    ```javascript
-   import { SentryAI } from 'sentryai';
-   const client = new SentryAI({ apiKey: 'sk_live_xxx', projectId: 'proj_xxx' });
+   import { lynex } from 'lynex';
+   const client = new lynex({ apiKey: 'sk_live_xxx', projectId: 'proj_xxx' });
    ```
 2. **Capture Event:**
    ```javascript
@@ -429,7 +429,7 @@
 
 ### Starting a New Task
 ```
-I am building Sentry for AI. Current context:
+I am building Lynex. Current context:
 - docs/CONTEXT.md (product spec)
 - docs/SYSTEM.md (coding rules)
 - docs/ARCHITECTURE.md (tech stack)

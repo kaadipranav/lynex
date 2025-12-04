@@ -1,4 +1,4 @@
-"""
+﻿"""
 Statistics and aggregation routes.
 """
 
@@ -17,7 +17,7 @@ from schemas import (
 )
 import clickhouse as ch
 
-logger = logging.getLogger("sentryai.query.stats")
+logger = logging.getLogger("lynex.query.stats")
 router = APIRouter()
 
 

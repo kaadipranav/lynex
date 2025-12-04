@@ -1,5 +1,5 @@
 -- ============================================================================
--- Sentry for AI - ClickHouse Schema
+-- Lynex - ClickHouse Schema
 -- ============================================================================
 -- Run this against your ClickHouse instance to create the tables.
 -- 

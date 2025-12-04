@@ -1,4 +1,4 @@
-"""
+﻿"""
 Billing API Routes.
 """
 
@@ -19,7 +19,7 @@ from billing import (
 )
 from config import settings
 
-logger = logging.getLogger("sentryai.billing.routes")
+logger = logging.getLogger("lynex.billing.routes")
 router = APIRouter()
 
 

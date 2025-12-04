@@ -1,4 +1,4 @@
-"""
+﻿"""
 Redis Queue Module.
 Handles pushing events to Redis Streams for async processing.
 Supports in-memory fallback for local testing.
@@ -17,7 +17,7 @@ from redis.exceptions import ConnectionError, TimeoutError
 from config import settings
 from schemas import EventEnvelope
 
-logger = logging.getLogger("sentryai.ingest.queue")
+logger = logging.getLogger("lynex.ingest.queue")
 
 # =============================================================================
 # In-Memory Queue Fallback (for testing without Redis)
@@ -77,7 +77,7 @@ async def close_redis_client():
 # Queue Constants
 # =============================================================================
 
-EVENTS_STREAM = "sentryai:events:incoming"
+EVENTS_STREAM = "lynex:events:incoming"
 MAX_STREAM_LENGTH = 100000  # Trim stream to prevent unbounded growth
 
 

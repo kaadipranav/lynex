@@ -1,4 +1,4 @@
-"""
+﻿"""
 Alert Notifiers - Send alerts via various channels.
 """
 
@@ -10,7 +10,7 @@ import httpx
 
 from config import settings
 
-logger = logging.getLogger("sentryai.notifiers")
+logger = logging.getLogger("lynex.notifiers")
 
 
 @dataclass

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Processor Worker - Main Entry Point
 Consumes events from Redis Stream and processes them.
 """
@@ -21,7 +21,7 @@ logging.basicConfig(
     level=logging.DEBUG if settings.debug else logging.INFO,
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 )
-logger = logging.getLogger("sentryai.processor")
+logger = logging.getLogger("lynex.processor")
 
 
 # =============================================================================
@@ -43,7 +43,7 @@ def signal_handler(sig, frame):
 
 async def main():
     """Main worker entry point."""
-    logger.info("🚀 Sentry for AI - Processor Worker starting...")
+    logger.info("🚀 Lynex - Processor Worker starting...")
     logger.info(f"   Debug mode: {settings.debug}")
     logger.info(f"   Redis: {settings.redis_url[:30]}...")
     logger.info(f"   ClickHouse: {settings.clickhouse_host}:{settings.clickhouse_port}")

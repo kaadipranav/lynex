@@ -1,4 +1,4 @@
-"""
+﻿"""
 ClickHouse Client for Query API.
 Includes mock data fallback for local testing.
 """
@@ -13,7 +13,7 @@ import httpx
 
 from config import settings
 
-logger = logging.getLogger("sentryai.query.clickhouse")
+logger = logging.getLogger("lynex.query.clickhouse")
 
 
 # =============================================================================
@@ -59,7 +59,7 @@ def generate_mock_events(project_id: str, count: int = 50) -> List[Dict]:
             "project_id": project_id,
             "type": event_type,
             "timestamp": timestamp.isoformat(),
-            "sdk_name": "sentryai-python",
+            "sdk_name": "lynex-python",
             "sdk_version": "1.0.0",
             "body": json.dumps(body),
             "context": json.dumps({"environment": "development"}),

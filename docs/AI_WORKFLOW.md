@@ -26,7 +26,7 @@ The #1 reason AI projects fail is **Context Drift**. The AI forgets what file st
 Before starting **ANY** coding session, you must "prime" the AI. Do not assume it remembers yesterday.
 
 **Copy-paste this prompt at the start of every chat:**
-> "I am building Sentry for AI. Here is the current context.
+> "I am building Lynex. Here is the current context.
 > 1. Project Goal: `docs/CONTEXT.md`
 > 2. Tech Stack & Rules: `docs/SYSTEM.md`
 > 3. Architecture: `docs/ARCHITECTURE.md`

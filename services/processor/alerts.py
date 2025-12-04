@@ -1,5 +1,5 @@
-"""
-Alert Rule Engine for Sentry for AI.
+﻿"""
+Alert Rule Engine for Lynex.
 Evaluates events against configured alert rules.
 """
 
@@ -8,7 +8,7 @@ from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 from enum import Enum
 
-logger = logging.getLogger("sentryai.alerts")
+logger = logging.getLogger("lynex.alerts")
 
 
 class AlertCondition(Enum):

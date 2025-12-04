@@ -1,4 +1,4 @@
-import os
+﻿import os
 import time
 import uuid
 import logging
@@ -9,9 +9,9 @@ import requests
 from typing import Optional, Dict, Any
 from datetime import datetime
 
-logger = logging.getLogger("sentryai")
+logger = logging.getLogger("lynex")
 
-class SentryAI:
+class Lynex:
     _instance = None
 
     def __init__(self, api_key: str, project_id: str, host: str = "http://localhost:8000"):
@@ -25,20 +25,20 @@ class SentryAI:
         
         # Register cleanup
         atexit.register(self.shutdown)
-        SentryAI._instance = self
+        Lynex._instance = self
 
     @classmethod
     def init(cls, api_key: str, project_id: str, host: str = "http://localhost:8000"):
-        """Initialize the global SentryAI client."""
+        """Initialize the global Lynex client."""
         if cls._instance:
-            logger.warning("SentryAI already initialized")
+            logger.warning("Lynex already initialized")
             return cls._instance
         return cls(api_key, project_id, host)
 
     @classmethod
     def get_instance(cls):
         if not cls._instance:
-            raise RuntimeError("SentryAI not initialized. Call SentryAI.init() first.")
+            raise RuntimeError("Lynex not initialized. Call Lynex.init() first.")
         return cls._instance
 
     def _worker(self):
@@ -81,7 +81,7 @@ class SentryAI:
             "type": event_type,
             "timestamp": datetime.utcnow().isoformat(),
             "sdk": {
-                "name": "sentryai-python",
+                "name": "lynex-python",
                 "version": "0.1.0"
             },
             "body": body,
@@ -91,7 +91,7 @@ class SentryAI:
         try:
             self.queue.put_nowait(event)
         except queue.Full:
-            logger.warning("SentryAI event queue full, dropping event")
+            logger.warning("Lynex event queue full, dropping event")
 
     def capture_log(self, message: str, level: str = "info", context: Optional[Dict[str, Any]] = None):
         self.capture_event("log", {"message": message, "level": level}, context)
@@ -120,7 +120,7 @@ class SentryAI:
         if self._stop_event.is_set():
             return
             
-        logger.info("SentryAI shutting down, flushing events...")
+        logger.info("Lynex shutting down, flushing events...")
         self._stop_event.set()
         
         # Wait for queue to empty (with timeout)

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Pydantic schemas for event ingestion.
 Based on docs/EVENT_SCHEMA.md
 """
@@ -15,7 +15,7 @@ from uuid import uuid4
 
 class SDKInfo(BaseModel):
     """SDK identification."""
-    name: str = Field(..., description="SDK name (e.g., 'sentryai-python')")
+    name: str = Field(..., description="SDK name (e.g., 'lynex-python')")
     version: str = Field(..., description="SDK version (e.g., '1.0.0')")
 
 

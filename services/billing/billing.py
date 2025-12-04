@@ -1,4 +1,4 @@
-"""
+﻿"""
 Billing Service with Whop Integration.
 Handles subscription tiers, usage tracking, and payment webhooks.
 """
@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 import httpx
 
-logger = logging.getLogger("sentryai.billing")
+logger = logging.getLogger("lynex.billing")
 
 
 # =============================================================================

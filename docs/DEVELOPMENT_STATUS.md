@@ -1,4 +1,4 @@
-# Development Status Report - Sentry for AI
+﻿# Development Status Report - Lynex
 
 **Date:** December 3, 2025  
 **Branch:** main  
@@ -6,7 +6,7 @@
 
 ## Project Overview
 
-Sentry for AI is a comprehensive monitoring and observability platform specifically designed for AI applications. It provides real-time tracking of LLM usage, errors, logs, and performance metrics with a modern web dashboard.
+Lynex is a comprehensive monitoring and observability platform specifically designed for AI applications. It provides real-time tracking of LLM usage, errors, logs, and performance metrics with a modern web dashboard.
 
 ### Architecture
 - **Microservices Architecture**: Ingest API, UI Backend, Processor, Frontend
@@ -65,7 +65,7 @@ Sentry for AI is a comprehensive monitoring and observability platform specifica
 - **Status:** ✅ Running
 
 ### 5. Python SDK (`libs/sdk-python/`)
-- **Package:** `sentryai`
+- **Package:** `lynex`
 - **Methods:** `capture_log()`, `capture_error()`, `capture_llm_usage()`
 - **Features:** Automatic error tracking, LLM monitoring
 - **Status:** ✅ Installed & Verified

@@ -1,11 +1,11 @@
-# @sentryai/sdk
+﻿# @lynex/sdk
 
-JavaScript/TypeScript SDK for Sentry for AI.
+JavaScript/TypeScript SDK for Lynex.
 
 ## Installation
 
 ```bash
-npm install @sentryai/sdk
+npm install @lynex/sdk
 ```
 
 ## Usage
@@ -13,12 +13,12 @@ npm install @sentryai/sdk
 ### Initialize
 
 ```typescript
-import * as sentryai from '@sentryai/sdk';
+import * as lynex from '@lynex/sdk';
 
-sentryai.init({
+lynex.init({
   apiKey: 'sk_test_...',
   projectId: 'proj_demo',
-  host: 'https://api.yoursentryai.com', // optional
+  host: 'https://api.yourlynex.com', // optional
 });
 ```
 
@@ -26,20 +26,20 @@ sentryai.init({
 
 ```typescript
 // Log messages
-sentryai.captureLog('User started chat', 'info');
+lynex.captureLog('User started chat', 'info');
 
 // Capture errors
 try {
   // ... code
 } catch (error) {
-  sentryai.captureError(error);
+  lynex.captureError(error);
 }
 
 // Track LLM usage
-sentryai.captureLLMUsage('gpt-4', 150, 300, 0.05);
+lynex.captureLLMUsage('gpt-4', 150, 300, 0.05);
 
 // Track model responses
-sentryai.captureModelResponse(
+lynex.captureModelResponse(
   'gpt-4',
   1250, // latency in ms
   true, // success
@@ -52,9 +52,9 @@ sentryai.captureModelResponse(
 ### Class-based API
 
 ```typescript
-import { SentryAI } from '@sentryai/sdk';
+import { Lynex } from '@lynex/sdk';
 
-const client = SentryAI.init({
+const client = lynex.init({
   apiKey: 'sk_test_...',
   projectId: 'proj_demo',
 });

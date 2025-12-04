@@ -1,5 +1,5 @@
-"""
-Sentry for AI — Ingest API
+﻿"""
+Lynex — Ingest API
 Main FastAPI application entry point.
 """
 
@@ -23,7 +23,7 @@ logging.basicConfig(
     level=logging.DEBUG if settings.debug else logging.INFO,
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 )
-logger = logging.getLogger("sentryai.ingest")
+logger = logging.getLogger("lynex.ingest")
 
 
 # =============================================================================
@@ -34,7 +34,7 @@ logger = logging.getLogger("sentryai.ingest")
 async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
     # Startup
-    logger.info("🚀 Sentry for AI - Ingest API starting...")
+    logger.info("🚀 Lynex - Ingest API starting...")
     logger.info(f"   Debug mode: {settings.debug}")
     logger.info(f"   Server: {settings.api_host}:{settings.api_port}")
     
@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI):
     yield
     
     # Shutdown
-    logger.info("👋 Sentry for AI - Ingest API shutting down...")
+    logger.info("👋 Lynex - Ingest API shutting down...")
     await event_queue.close_redis_client()
 
 
@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI):
 # =============================================================================
 
 app = FastAPI(
-    title="Sentry for AI - Ingest API",
+    title="Lynex - Ingest API",
     description="AI Observability Platform - Event Ingestion Service",
     version="1.0.0",
     lifespan=lifespan,
@@ -127,7 +127,7 @@ async def queue_health():
 async def root():
     """Root endpoint."""
     return {
-        "service": "Sentry for AI - Ingest API",
+        "service": "Lynex - Ingest API",
         "version": "1.0.0",
         "docs": "/docs" if settings.debug else "Disabled in production"
     }

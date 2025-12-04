@@ -1,4 +1,4 @@
-"""
+﻿"""
 Event query routes.
 """
 
@@ -11,7 +11,7 @@ import logging
 from schemas import EventResponse, EventListResponse, ErrorResponse
 import clickhouse as ch
 
-logger = logging.getLogger("sentryai.query.events")
+logger = logging.getLogger("lynex.query.events")
 router = APIRouter()
 
 

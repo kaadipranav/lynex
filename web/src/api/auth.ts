@@ -13,8 +13,8 @@ export interface AuthResponse {
   expires_at: string;
 }
 
-const TOKEN_KEY = 'sentryai_token';
-const USER_KEY = 'sentryai_user';
+const TOKEN_KEY = 'lynex_token';
+const USER_KEY = 'lynex_user';
 
 export const authApi = {
   signup: async (email: string, password: string, name?: string) => {
@@ -66,7 +66,7 @@ export const authApi = {
 function saveAuth(data: AuthResponse) {
   localStorage.setItem(TOKEN_KEY, data.token);
   localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-  
+
   // Set default Authorization header for future requests
   apiClient.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
 }

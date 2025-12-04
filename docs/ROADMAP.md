@@ -1,4 +1,4 @@
-# ROADMAP — Execution Plan for AI Observability Platform
+﻿# ROADMAP — Execution Plan for AI Observability Platform
 
 > This roadmap defines how the entire platform will be delivered from MVP → V1 → V2 → Enterprise. Each phase is designed to maximize speed, revenue, and investor appeal.
 
@@ -7,7 +7,7 @@
 # 0. Philosophy
 
 * Ship **the smallest version** that proves the product works and brings MRR.
-* Expand into the **full Sentry-for-AI platform** only after core ingestion + dashboard is stable.
+* Expand into the **full Lynex platform** only after core ingestion + dashboard is stable.
 * Everything is modular so you can ship fast using AI coding assistance.
 
 ---
@@ -74,7 +74,7 @@
 
 ---
 
-# 3. V1 Launch (6 months) — *“Sentry for AI”*
+# 3. V1 Launch (6 months) — *“Lynex”*
 
 ### Positioning
 

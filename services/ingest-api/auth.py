@@ -1,4 +1,4 @@
-"""
+﻿"""
 API Key Authentication Module.
 Handles API key validation and project scoping.
 """
@@ -9,7 +9,7 @@ from typing import Optional
 import logging
 import re
 
-logger = logging.getLogger("sentryai.ingest.auth")
+logger = logging.getLogger("lynex.ingest.auth")
 
 # =============================================================================
 # API Key Configuration
@@ -140,7 +140,7 @@ async def get_api_key(
             detail={
                 "error": "Missing API key",
                 "message": "Please provide an API key in the X-API-Key header",
-                "docs": "https://docs.sentryai.dev/authentication"
+                "docs": "https://docs.lynex.dev/authentication"
             }
         )
     
@@ -152,7 +152,7 @@ async def get_api_key(
             detail={
                 "error": "Invalid API key format",
                 "message": "API key must be in format: sk_live_xxx or sk_test_xxx",
-                "docs": "https://docs.sentryai.dev/authentication"
+                "docs": "https://docs.lynex.dev/authentication"
             }
         )
     
@@ -165,7 +165,7 @@ async def get_api_key(
             detail={
                 "error": "Invalid API key",
                 "message": "This API key does not exist or has been revoked",
-                "docs": "https://docs.sentryai.dev/authentication"
+                "docs": "https://docs.lynex.dev/authentication"
             }
         )
     

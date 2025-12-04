@@ -1,4 +1,4 @@
-# ARCHITECTURE — High-Level System Design
+﻿# ARCHITECTURE — High-Level System Design
 
 > Purpose: Define the technical architecture decisions, component interactions, data flow, scaling strategies, and infra requirements for the AI observability platform. This document ensures consistency across generated code and infra, and serves as the canonical reference for engineers and AI agents.
 
@@ -112,7 +112,7 @@ Leveraging the GitHub Student Developer Pack allows us to run a production-grade
 
 ## 5. Data Flow
 
-1.  **SDK** sends JSON event to `api.sentryai.dev` (DigitalOcean LB).
+1.  **SDK** sends JSON event to `api.lynex.dev` (DigitalOcean LB).
 2.  **Ingest API** validates API Key (cached from Appwrite/DB) -> pushes to **Redis** (DO Droplet).
 3.  **Worker** pulls from Redis -> enriches -> inserts into **ClickHouse** (DO Droplet).
 4.  **Worker** checks alerts -> sends webhook/email.

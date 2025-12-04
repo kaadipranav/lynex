@@ -42,7 +42,7 @@ export default function SignupPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-indigo-600">SentryAI</h1>
+          <h1 className="text-3xl font-bold text-indigo-600">Lynex</h1>
           <p className="text-gray-500 mt-2">Create your account</p>
         </div>
 

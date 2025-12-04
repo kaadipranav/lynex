@@ -1,6 +1,6 @@
-import os
+﻿import os
 import time
-from sentryai import SentryAI
+from lynex import Lynex
 
 # Initialize SDK
 # Use the mock key we defined in auth.py
@@ -8,7 +8,7 @@ API_KEY = "sk_test_demo1234567890abcdefghijklmno"
 PROJECT_ID = "proj_demo"
 HOST = "http://localhost:8000"
 
-client = SentryAI(api_key=API_KEY, project_id=PROJECT_ID, host=HOST)
+client = Lynex(api_key=API_KEY, project_id=PROJECT_ID, host=HOST)
 
 print("🚀 Sending test events...")
 

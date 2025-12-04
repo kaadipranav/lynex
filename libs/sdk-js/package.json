@@ -1,7 +1,7 @@
 {
-  "name": "@sentryai/sdk",
+  "name": "@lynex/sdk",
   "version": "0.1.0",
-  "description": "JavaScript/TypeScript SDK for Sentry for AI",
+  "description": "JavaScript/TypeScript SDK for Lynex",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -21,7 +21,7 @@
     "observability",
     "monitoring"
   ],
-  "author": "SentryAI Team",
+  "author": "Lynex Team",
   "license": "MIT",
   "devDependencies": {
     "tsup": "^8.0.0",

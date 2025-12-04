@@ -1,4 +1,4 @@
-export interface SentryAIConfig {
+﻿export interface LynexConfig {
   apiKey: string;
   projectId: string;
   host?: string;
@@ -11,7 +11,7 @@ export interface EventBody {
   [key: string]: any;
 }
 
-export interface SentryAIEvent {
+export interface LynexEvent {
   eventId: string;
   projectId: string;
   type: string;

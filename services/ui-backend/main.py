@@ -1,5 +1,5 @@
-"""
-Sentry for AI — Query API (UI Backend)
+﻿"""
+Lynex — Query API (UI Backend)
 Provides read-only endpoints for the dashboard.
 """
 
@@ -23,7 +23,7 @@ logging.basicConfig(
     level=logging.DEBUG if settings.debug else logging.INFO,
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 )
-logger = logging.getLogger("sentryai.query")
+logger = logging.getLogger("lynex.query")
 
 
 # =============================================================================
@@ -33,7 +33,7 @@ logger = logging.getLogger("sentryai.query")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
-    logger.info("🚀 Sentry for AI - Query API starting...")
+    logger.info("🚀 Lynex - Query API starting...")
     logger.info(f"   Server: {settings.api_host}:{settings.api_port}")
     
     # Connect to ClickHouse (will fallback to mock data if unavailable)
@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
 # =============================================================================
 
 app = FastAPI(
-    title="Sentry for AI - Query API",
+    title="Lynex - Query API",
     description="Read-only API for dashboard queries",
     version="1.0.0",
     lifespan=lifespan,
@@ -82,7 +82,7 @@ app.add_middleware(
 @app.get("/")
 async def root():
     return {
-        "service": "Sentry for AI - Query API",
+        "service": "Lynex - Query API",
         "version": "1.0.0",
     }
 

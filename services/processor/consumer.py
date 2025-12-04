@@ -1,4 +1,4 @@
-"""
+﻿"""
 Redis Stream Consumer for Event Processing.
 """
 
@@ -14,15 +14,15 @@ from redis.exceptions import ConnectionError, TimeoutError, ResponseError
 from config import settings
 from handlers import process_event
 
-logger = logging.getLogger("sentryai.processor.consumer")
+logger = logging.getLogger("lynex.processor.consumer")
 
 
 # =============================================================================
 # Constants
 # =============================================================================
 
-EVENTS_STREAM = "sentryai:events:incoming"
-CONSUMER_GROUP = "sentryai-processors"
+EVENTS_STREAM = "lynex:events:incoming"
+CONSUMER_GROUP = "lynex-processors"
 CONSUMER_NAME = f"processor-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
 
 # How many events to fetch per batch

@@ -1,28 +1,28 @@
-export { SentryAI } from './client';
+﻿export { Lynex } from './client';
 export * from './types';
 
-import { SentryAI } from './client';
-import type { SentryAIConfig } from './types';
+import { Lynex } from './client';
+import type { LynexConfig } from './types';
 
 // Convenience exports for functional API
-export function init(config: SentryAIConfig) {
-  return SentryAI.init(config);
+export function init(config: LynexConfig) {
+  return Lynex.init(config);
 }
 
 export function captureEvent(type: string, body: Record<string, any>, context?: Record<string, any>) {
-  SentryAI.getInstance().captureEvent(type, body, context);
+  Lynex.getInstance().captureEvent(type, body, context);
 }
 
 export function captureLog(message: string, level: 'debug' | 'info' | 'warn' | 'error' = 'info', context?: Record<string, any>) {
-  SentryAI.getInstance().captureLog(message, level, context);
+  Lynex.getInstance().captureLog(message, level, context);
 }
 
 export function captureError(error: Error, context?: Record<string, any>) {
-  SentryAI.getInstance().captureError(error, context);
+  Lynex.getInstance().captureError(error, context);
 }
 
 export function captureLLMUsage(model: string, inputTokens: number, outputTokens: number, cost?: number) {
-  SentryAI.getInstance().captureLLMUsage(model, inputTokens, outputTokens, cost);
+  Lynex.getInstance().captureLLMUsage(model, inputTokens, outputTokens, cost);
 }
 
 export function captureModelResponse(
@@ -33,9 +33,9 @@ export function captureModelResponse(
   prompt?: string,
   response?: string
 ) {
-  SentryAI.getInstance().captureModelResponse(model, latencyMs, success, usage, prompt, response);
+  Lynex.getInstance().captureModelResponse(model, latencyMs, success, usage, prompt, response);
 }
 
 export function flush() {
-  return SentryAI.getInstance().flush();
+  return Lynex.getInstance().flush();
 }
