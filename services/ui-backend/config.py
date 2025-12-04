@@ -33,10 +33,21 @@ class Settings(BaseSettings):
     clickhouse_database: str = Field(default="default")
 
     # ----- Redis -----
+    # Supports both URL format (for DO App Platform) and individual params
+    redis_url: Optional[str] = Field(default=None, description="Redis URL (takes precedence)")
     redis_host: str = Field(default="localhost")
     redis_port: int = Field(default=6379)
     redis_db: int = Field(default=0)
     redis_password: Optional[str] = Field(default=None)
+
+    @property
+    def redis_connection_url(self) -> str:
+        """Get Redis connection URL, preferring REDIS_URL if set."""
+        if self.redis_url:
+            return self.redis_url
+        if self.redis_password:
+            return f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}/{self.redis_db}"
+        return f"redis://{self.redis_host}:{self.redis_port}/{self.redis_db}"
 
     # ----- API Server -----
     api_host: str = Field(default="0.0.0.0")

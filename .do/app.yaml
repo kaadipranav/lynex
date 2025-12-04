@@ -1,0 +1,200 @@
+# =============================================================================
+# DigitalOcean App Platform Deployment Configuration
+# =============================================================================
+# Deploy with: doctl apps create --spec .do/app.yaml
+# Update with: doctl apps update <app-id> --spec .do/app.yaml
+#
+# Estimated Monthly Cost (Student Pack $200 credit):
+#   - Static Site (web): FREE
+#   - Basic Services x3: ~$5/mo each = $15/mo
+#   - Redis Dev Database: $7/mo
+#   - ClickHouse Droplet: $6/mo (separate)
+#   TOTAL: ~$28/mo = 7+ months of runway with $200 credit
+# =============================================================================
+
+name: lynex
+region: nyc
+
+# =============================================================================
+# STATIC SITE - React Frontend
+# =============================================================================
+static_sites:
+  - name: web
+    github:
+      repo: kaadipranav/sentry-for-ai
+      branch: main
+      deploy_on_push: true
+    source_dir: /web
+    build_command: npm install && npm run build
+    output_dir: /web/dist
+    envs:
+      - key: VITE_API_URL
+        value: ${ui-backend.PUBLIC_URL}
+      - key: VITE_SUPABASE_URL
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: VITE_SUPABASE_ANON_KEY
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: VITE_SENTRY_DSN
+        scope: RUN_AND_BUILD_TIME
+        type: SECRET
+      - key: VITE_SENTRY_ENVIRONMENT
+        value: production
+
+# =============================================================================
+# SERVICES
+# =============================================================================
+services:
+  # ---------------------------------------------------------------------------
+  # Ingest API - Receives events from SDKs
+  # ---------------------------------------------------------------------------
+  - name: ingest-api
+    github:
+      repo: kaadipranav/sentry-for-ai
+      branch: main
+      deploy_on_push: true
+    dockerfile_path: services/ingest-api/Dockerfile
+    source_dir: /services
+    http_port: 8001
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    routes:
+      - path: /ingest
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 10
+      period_seconds: 30
+    envs:
+      - key: REDIS_URL
+        scope: RUN_TIME
+        value: ${redis.DATABASE_URL}
+      - key: CLICKHOUSE_HOST
+        scope: RUN_TIME
+        type: SECRET
+      - key: CLICKHOUSE_PORT
+        value: "9000"
+      - key: CLICKHOUSE_USER
+        value: default
+      - key: CLICKHOUSE_PASSWORD
+        scope: RUN_TIME
+        type: SECRET
+      - key: CLICKHOUSE_DATABASE
+        value: default
+      - key: SENTRY_DSN
+        scope: RUN_TIME
+        type: SECRET
+      - key: ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: SUPABASE_URL
+        scope: RUN_TIME
+        type: SECRET
+      - key: SUPABASE_SERVICE_KEY
+        scope: RUN_TIME
+        type: SECRET
+
+  # ---------------------------------------------------------------------------
+  # Processor - Background worker (internal only)
+  # ---------------------------------------------------------------------------
+  - name: processor
+    github:
+      repo: kaadipranav/sentry-for-ai
+      branch: main
+      deploy_on_push: true
+    dockerfile_path: services/processor/Dockerfile
+    source_dir: /services
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    # No routes = internal only (no external HTTP)
+    envs:
+      - key: REDIS_URL
+        scope: RUN_TIME
+        value: ${redis.DATABASE_URL}
+      - key: CLICKHOUSE_HOST
+        scope: RUN_TIME
+        type: SECRET
+      - key: CLICKHOUSE_PORT
+        value: "9000"
+      - key: CLICKHOUSE_USER
+        value: default
+      - key: CLICKHOUSE_PASSWORD
+        scope: RUN_TIME
+        type: SECRET
+      - key: CLICKHOUSE_DATABASE
+        value: default
+      - key: SENTRY_DSN
+        scope: RUN_TIME
+        type: SECRET
+      - key: ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+
+  # ---------------------------------------------------------------------------
+  # UI Backend - Dashboard API
+  # ---------------------------------------------------------------------------
+  - name: ui-backend
+    github:
+      repo: kaadipranav/sentry-for-ai
+      branch: main
+      deploy_on_push: true
+    dockerfile_path: services/ui-backend/Dockerfile
+    source_dir: /services
+    http_port: 8000
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    routes:
+      - path: /api
+    health_check:
+      http_path: /health
+      initial_delay_seconds: 10
+      period_seconds: 30
+    envs:
+      - key: REDIS_URL
+        scope: RUN_TIME
+        value: ${redis.DATABASE_URL}
+      - key: CLICKHOUSE_HOST
+        scope: RUN_TIME
+        type: SECRET
+      - key: CLICKHOUSE_PORT
+        value: "9000"
+      - key: CLICKHOUSE_USER
+        value: default
+      - key: CLICKHOUSE_PASSWORD
+        scope: RUN_TIME
+        type: SECRET
+      - key: CLICKHOUSE_DATABASE
+        value: default
+      - key: SENTRY_DSN
+        scope: RUN_TIME
+        type: SECRET
+      - key: ENV
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: SUPABASE_URL
+        scope: RUN_TIME
+        type: SECRET
+      - key: SUPABASE_ANON_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: SUPABASE_SERVICE_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: ADMIN_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: CORS_ORIGINS
+        value: ${web.PUBLIC_URL}
+
+# =============================================================================
+# DATABASES
+# =============================================================================
+databases:
+  - name: redis
+    engine: REDIS
+    version: "7"
+    size: db-s-dev-database  # $7/mo dev tier
+    num_nodes: 1

@@ -9,13 +9,16 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first (for layer caching)
-COPY requirements.txt .
+COPY ingest-api/requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy shared module first
+COPY shared /app/shared
+
 # Copy application code
-COPY . .
+COPY ingest-api /app
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
