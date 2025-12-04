@@ -84,11 +84,33 @@ class Settings(BaseSettings):
         default=True,
         description="Enable debug mode"
     )
+    env: str = Field(
+        default="development",
+        description="Environment: development, staging, or production"
+    )
 
     # ----- Monitoring (Optional) -----
     sentry_dsn: Optional[str] = Field(
         default=None,
         description="Sentry DSN for error tracking"
+    )
+
+    # ----- Datadog APM -----
+    datadog_enabled: bool = Field(
+        default=False,
+        description="Enable Datadog APM tracing"
+    )
+    dd_service: str = Field(
+        default="lynex-ingest-api",
+        description="Datadog service name"
+    )
+    dd_env: str = Field(
+        default="development",
+        description="Datadog environment"
+    )
+    dd_version: str = Field(
+        default="1.0.0",
+        description="Application version for Datadog"
     )
 
     class Config:

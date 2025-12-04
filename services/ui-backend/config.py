@@ -36,6 +36,34 @@ class Settings(BaseSettings):
     api_host: str = Field(default="0.0.0.0")
     api_port: int = Field(default=8001)  # Different port from ingest API
     debug: bool = Field(default=True)
+    env: str = Field(
+        default="development",
+        description="Environment: development, staging, or production"
+    )
+
+    # ----- Monitoring (Optional) -----
+    sentry_dsn: Optional[str] = Field(
+        default=None,
+        description="Sentry DSN for error tracking"
+    )
+
+    # ----- Datadog APM -----
+    datadog_enabled: bool = Field(
+        default=False,
+        description="Enable Datadog APM tracing"
+    )
+    dd_service: str = Field(
+        default="lynex-ui-backend",
+        description="Datadog service name"
+    )
+    dd_env: str = Field(
+        default="development",
+        description="Datadog environment"
+    )
+    dd_version: str = Field(
+        default="1.0.0",
+        description="Application version for Datadog"
+    )
 
     # ----- Auth -----
     jwt_secret: str = Field(default="dev-secret-change-in-production")

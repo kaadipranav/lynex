@@ -9,6 +9,18 @@ import signal
 import sys
 from datetime import datetime
 
+import sentry_sdk
+
+import os
+
+# Try to import ddtrace (may fail on Python 3.13+)
+try:
+    from ddtrace import patch_all
+    DDTRACE_AVAILABLE = True
+except ImportError:
+    DDTRACE_AVAILABLE = False
+    patch_all = None
+
 from consumer import EventConsumer
 from config import settings
 import clickhouse
@@ -47,6 +59,31 @@ async def main():
     logger.info(f"   Debug mode: {settings.debug}")
     logger.info(f"   Redis: {settings.redis_url[:30]}...")
     logger.info(f"   ClickHouse: {settings.clickhouse_host}:{settings.clickhouse_port}")
+    
+    # Initialize Sentry
+    if settings.sentry_dsn:
+        sentry_sdk.init(
+            dsn=settings.sentry_dsn,
+            environment=settings.env,
+            traces_sample_rate=1.0 if settings.debug else 0.1,
+            release=f"lynex-processor@1.0.0",
+            server_name="processor",
+        )
+        logger.info("✅ Sentry initialized for error tracking")
+    else:
+        logger.warning("⚠️  Sentry DSN not configured")
+    
+    # Initialize Datadog APM
+    if settings.datadog_enabled and DDTRACE_AVAILABLE:
+        os.environ["DD_SERVICE"] = settings.dd_service
+        os.environ["DD_ENV"] = settings.dd_env
+        os.environ["DD_VERSION"] = settings.dd_version
+        patch_all()
+        logger.info(f"✅ Datadog APM initialized (service: {settings.dd_service})")
+    elif settings.datadog_enabled and not DDTRACE_AVAILABLE:
+        logger.warning("⚠️  Datadog enabled but ddtrace not available (Python 3.13+ compatibility issue)")
+    else:
+        logger.info("ℹ️  Datadog APM disabled")
     
     # Create consumer
     consumer = EventConsumer()

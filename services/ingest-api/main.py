@@ -9,6 +9,21 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import logging
 
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
+
+import os
+
+# Try to import ddtrace (may fail on Python 3.13+)
+try:
+    from ddtrace import tracer, patch_all
+    DDTRACE_AVAILABLE = True
+except ImportError:
+    DDTRACE_AVAILABLE = False
+    tracer = None
+    patch_all = None
+
 from config import settings
 from schemas import HealthResponse
 from routes.events import router as events_router
@@ -24,6 +39,54 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 )
 logger = logging.getLogger("lynex.ingest")
+
+
+# =============================================================================
+# Sentry Initialization
+# =============================================================================
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.env,
+        traces_sample_rate=1.0 if settings.debug else 0.1,
+        profiles_sample_rate=1.0 if settings.debug else 0.1,
+        integrations=[
+            FastApiIntegration(transaction_style="endpoint"),
+            LoggingIntegration(
+                level=logging.INFO,
+                event_level=logging.ERROR
+            ),
+        ],
+        # Additional metadata
+        release=f"lynex-ingest@1.0.0",
+        server_name="ingest-api",
+    )
+    logger.info("✅ Sentry initialized for error tracking")
+else:
+    logger.warning("⚠️  Sentry DSN not configured - error tracking disabled")
+
+
+# =============================================================================
+# Datadog APM Initialization
+# =============================================================================
+
+if settings.datadog_enabled and DDTRACE_AVAILABLE:
+    # Set Datadog environment variables
+    os.environ["DD_SERVICE"] = settings.dd_service
+    os.environ["DD_ENV"] = settings.dd_env
+    os.environ["DD_VERSION"] = settings.dd_version
+    os.environ["DD_LOGS_INJECTION"] = "true"
+    os.environ["DD_TRACE_SAMPLE_RATE"] = "1.0" if settings.debug else "0.1"
+    
+    # Auto-instrument FastAPI, Redis, HTTP clients
+    patch_all()
+    
+    logger.info(f"✅ Datadog APM initialized (service: {settings.dd_service})")
+elif settings.datadog_enabled and not DDTRACE_AVAILABLE:
+    logger.warning("⚠️  Datadog enabled but ddtrace not available (Python 3.13+ compatibility issue)")
+else:
+    logger.info("ℹ️  Datadog APM disabled")
 
 
 # =============================================================================
@@ -131,6 +194,15 @@ async def root():
         "version": "1.0.0",
         "docs": "/docs" if settings.debug else "Disabled in production"
     }
+
+
+# Sentry test endpoint (only in debug mode)
+if settings.debug:
+    @app.get("/sentry-test", tags=["Health"])
+    async def sentry_test():
+        """Test Sentry error tracking - only available in debug mode"""
+        logger.info("Triggering test error for Sentry")
+        raise Exception("🧪 This is a test error for Sentry! If you see this in Sentry dashboard, integration is working.")
 
 
 # Event ingestion routes

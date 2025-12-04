@@ -1,0 +1,151 @@
+version: '3.8'
+
+services:
+  # Redis Queue
+  redis:
+    image: redis:7-alpine
+    container_name: lynex-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # ClickHouse Database
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: lynex-clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - ./infra/clickhouse/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    environment:
+      CLICKHOUSE_DB: lynex
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Ingest API
+  ingest-api:
+    build:
+      context: ./services/ingest-api
+      dockerfile: Dockerfile
+    container_name: lynex-ingest-api
+    ports:
+      - "8001:8001"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_PORT=8123
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - ENV=${ENV:-development}
+      - DATADOG_ENABLED=${DATADOG_ENABLED:-false}
+      - DD_SERVICE=lynex-ingest-api
+      - DD_ENV=${ENV:-development}
+      - DD_AGENT_HOST=datadog-agent
+      - API_PORT=8001
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Processor Worker
+  processor:
+    build:
+      context: ./services/processor
+      dockerfile: Dockerfile
+    container_name: lynex-processor
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_PORT=8123
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - ENV=${ENV:-development}
+      - DATADOG_ENABLED=${DATADOG_ENABLED:-false}
+      - DD_SERVICE=lynex-processor
+      - DD_ENV=${ENV:-development}
+      - DD_AGENT_HOST=datadog-agent
+    depends_on:
+      - redis
+      - clickhouse
+    restart: unless-stopped
+
+  # UI Backend (Query API)
+  ui-backend:
+    build:
+      context: ./services/ui-backend
+      dockerfile: Dockerfile
+    container_name: lynex-ui-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_PORT=8123
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - ENV=${ENV:-development}
+      - DATADOG_ENABLED=${DATADOG_ENABLED:-false}
+      - DD_SERVICE=lynex-ui-backend
+      - DD_ENV=${ENV:-development}
+      - DD_AGENT_HOST=datadog-agent
+      - API_PORT=8000
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Frontend (React App)
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: lynex-web
+    ports:
+      - "5173:80"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - ui-backend
+    restart: unless-stopped
+
+  # Datadog Agent (Optional - for production monitoring)
+  datadog-agent:
+    image: gcr.io/datadoghq/agent:latest
+    container_name: datadog-agent
+    environment:
+      - DD_API_KEY=${DATADOG_API_KEY:-}
+      - DD_SITE=datadoghq.com
+      - DD_LOGS_ENABLED=true
+      - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+      - DD_CONTAINER_EXCLUDE="name:datadog-agent"
+      - DD_APM_ENABLED=true
+      - DD_APM_NON_LOCAL_TRAFFIC=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc/:/host/proc/:ro
+      - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
+    ports:
+      - "8126:8126"  # APM
+    profiles:
+      - monitoring  # Only start with: docker-compose --profile monitoring up
+
+volumes:
+  redis-data:
+  clickhouse-data:

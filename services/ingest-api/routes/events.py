@@ -6,6 +6,14 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from typing import Optional
 import logging
 
+# Try to import ddtrace (may fail on Python 3.13+)
+try:
+    from ddtrace import tracer
+    DDTRACE_AVAILABLE = True
+except ImportError:
+    DDTRACE_AVAILABLE = False
+    tracer = None
+
 from schemas import EventEnvelope, EventIngestResponse, ErrorResponse
 from auth import APIKeyData, get_api_key
 import redis_queue as event_queue
@@ -59,39 +67,52 @@ async def ingest_event(
     - `custom` - Custom events
     """
     
-    # Log authenticated request
-    logger.info(f"📥 Event received (auth: {api_key.project_id}):")
-    logger.info(f"   ID: {event.event_id}")
-    logger.info(f"   Project: {event.project_id}")
-    logger.info(f"   Type: {event.type}")
-    logger.info(f"   Timestamp: {event.timestamp}")
-    logger.info(f"   SDK: {event.sdk.name} v{event.sdk.version}")
+    # Start custom trace span for Datadog (if available)
+    span_context = tracer.trace("event.ingest", service="lynex-ingest-api") if DDTRACE_AVAILABLE and tracer else None
     
-    # Warn if event project_id doesn't match API key project
-    if event.project_id != api_key.project_id:
-        logger.warning(
-            f"Project mismatch: event={event.project_id}, key={api_key.project_id}"
-        )
-    
-    # Push to Redis queue
     try:
-        message_id = await event_queue.push_event(event)
-        logger.info(f"   ✅ Queued: {message_id}")
-    except Exception as e:
-        logger.error(f"   ❌ Queue failed: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={
-                "error": "Queue unavailable",
-                "message": "Event could not be queued. Please retry.",
-            }
+        # Add custom tags for filtering in Datadog
+        if span_context:
+            span_context.set_tag("event.type", event.type)
+            span_context.set_tag("project.id", event.project_id)
+            span_context.set_tag("sdk.name", event.sdk.name if event.sdk else "unknown")
+        
+        # Log authenticated request
+        logger.info(f"📥 Event received (auth: {api_key.project_id}):")
+        logger.info(f"   ID: {event.event_id}")
+        logger.info(f"   Project: {event.project_id}")
+        logger.info(f"   Type: {event.type}")
+        logger.info(f"   Timestamp: {event.timestamp}")
+        logger.info(f"   SDK: {event.sdk.name} v{event.sdk.version}")
+        
+        # Warn if event project_id doesn't match API key project
+        if event.project_id != api_key.project_id:
+            logger.warning(
+                f"Project mismatch: event={event.project_id}, key={api_key.project_id}"
+            )
+        
+        # Push to Redis queue
+        try:
+            message_id = await event_queue.push_event(event)
+            logger.info(f"   ✅ Queued: {message_id}")
+        except Exception as e:
+            logger.error(f"   ❌ Queue failed: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "error": "Queue unavailable",
+                    "message": "Event could not be queued. Please retry.",
+                }
+            )
+        
+        return EventIngestResponse(
+            status="queued",
+            event_id=event.event_id,
+            message="Event received successfully"
         )
-    
-    return EventIngestResponse(
-        status="queued",
-        event_id=event.event_id,
-        message="Event received successfully"
-    )
+    finally:
+        if span_context:
+            span_context.finish()
 
 
 # =============================================================================

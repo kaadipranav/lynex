@@ -1,10 +1,17 @@
 {
   "name": "@lynex/sdk",
   "version": "0.1.0",
-  "description": "JavaScript/TypeScript SDK for Lynex",
+  "description": "JavaScript/TypeScript SDK for Lynex - AI Observability Platform",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "files": [
     "dist"
   ],
@@ -12,19 +19,38 @@
     "build": "tsup src/index.ts --format cjs,esm --dts",
     "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
     "lint": "eslint src/",
-    "test": "vitest"
+    "test": "vitest",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
-    "sentry",
+    "lynex",
     "ai",
     "llm",
     "observability",
-    "monitoring"
+    "monitoring",
+    "tracing",
+    "openai",
+    "langchain"
   ],
   "author": "Lynex Team",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kaadipranav/sentry-for-ai.git",
+    "directory": "libs/sdk-js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "uuid": "^9.0.0"
+  },
   "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/uuid": "^9.0.0",
     "tsup": "^8.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }
