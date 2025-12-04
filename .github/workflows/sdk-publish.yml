@@ -1,0 +1,236 @@
+# =============================================================================
+# SDK Publish Workflow - Publishes SDKs to Package Registries
+# =============================================================================
+# Triggers on version tags (v*).
+# Publishes Python SDK to PyPI and JS SDK to npm.
+
+name: Publish SDKs
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 1.0.0)'
+        required: true
+        type: string
+      publish_python:
+        description: 'Publish Python SDK'
+        required: false
+        default: true
+        type: boolean
+      publish_js:
+        description: 'Publish JS SDK'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  # ===========================================================================
+  # Extract Version
+  # ===========================================================================
+  version:
+    name: Extract Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+    
+    steps:
+      - name: Get version from tag or input
+        id: get-version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Publishing version: $VERSION"
+
+  # ===========================================================================
+  # Publish Python SDK to PyPI
+  # ===========================================================================
+  publish-python:
+    name: Publish Python SDK
+    runs-on: ubuntu-latest
+    needs: version
+    if: github.event_name == 'push' || github.event.inputs.publish_python == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install build tools
+        run: |
+          pip install build twine
+
+      - name: Update version in setup.py
+        run: |
+          cd libs/sdk-python
+          VERSION="${{ needs.version.outputs.version }}"
+          sed -i "s/version=\".*\"/version=\"$VERSION\"/" setup.py
+          cat setup.py
+
+      - name: Build package
+        run: |
+          cd libs/sdk-python
+          python -m build
+
+      - name: Check package
+        run: |
+          cd libs/sdk-python
+          twine check dist/*
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          cd libs/sdk-python
+          twine upload dist/*
+
+      - name: Create GitHub Release Asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-sdk-${{ needs.version.outputs.version }}
+          path: libs/sdk-python/dist/*
+
+  # ===========================================================================
+  # Publish JS SDK to npm
+  # ===========================================================================
+  publish-js:
+    name: Publish JS SDK
+    runs-on: ubuntu-latest
+    needs: version
+    if: github.event_name == 'push' || github.event.inputs.publish_js == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: |
+          cd libs/sdk-js
+          npm ci || npm install
+
+      - name: Update version in package.json
+        run: |
+          cd libs/sdk-js
+          VERSION="${{ needs.version.outputs.version }}"
+          npm version $VERSION --no-git-tag-version --allow-same-version
+
+      - name: Build package
+        run: |
+          cd libs/sdk-js
+          npm run build || npx tsc
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          cd libs/sdk-js
+          npm publish --access public
+
+      - name: Create GitHub Release Asset
+        uses: actions/upload-artifact@v4
+        with:
+          name: js-sdk-${{ needs.version.outputs.version }}
+          path: |
+            libs/sdk-js/dist/*
+            libs/sdk-js/package.json
+
+  # ===========================================================================
+  # Create GitHub Release
+  # ===========================================================================
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [version, publish-python, publish-js]
+    if: always() && (needs.publish-python.result == 'success' || needs.publish-js.result == 'success')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Python SDK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: python-sdk-${{ needs.version.outputs.version }}
+          path: release/python
+        continue-on-error: true
+
+      - name: Download JS SDK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: js-sdk-${{ needs.version.outputs.version }}
+          path: release/js
+        continue-on-error: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ needs.version.outputs.version }}
+          name: Release v${{ needs.version.outputs.version }}
+          body: |
+            ## Lynex SDK v${{ needs.version.outputs.version }}
+            
+            ### Installation
+            
+            **Python:**
+            ```bash
+            pip install lynex==${{ needs.version.outputs.version }}
+            ```
+            
+            **JavaScript/TypeScript:**
+            ```bash
+            npm install @lynex/sdk@${{ needs.version.outputs.version }}
+            ```
+            
+            ### Changes
+            See [CHANGELOG.md](CHANGELOG.md) for details.
+          files: |
+            release/**/*
+          draft: false
+          prerelease: ${{ contains(needs.version.outputs.version, 'beta') || contains(needs.version.outputs.version, 'alpha') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ===========================================================================
+  # Notify on Publish
+  # ===========================================================================
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: [version, publish-python, publish-js, create-release]
+    if: always()
+    
+    steps:
+      - name: Summary
+        run: |
+          echo "## 📦 SDK Publish Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** v${{ needs.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| SDK | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Python (PyPI) | ${{ needs.publish-python.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| JavaScript (npm) | ${{ needs.publish-js.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Installation" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "pip install lynex==${{ needs.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "npm install @lynex/sdk@${{ needs.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
