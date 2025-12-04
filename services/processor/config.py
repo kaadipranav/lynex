@@ -3,10 +3,19 @@ Configuration module for Processor Worker.
 Reads environment variables using pydantic-settings.
 """
 
+import sys
+from pathlib import Path
+
+# Add shared module to path
+shared_path = Path(__file__).resolve().parent.parent / "shared"
+if str(shared_path) not in sys.path:
+    sys.path.insert(0, str(shared_path))
+
 from pydantic_settings import BaseSettings
 from pydantic import Field
 from typing import Optional
-from pathlib import Path
+
+from shared.config import validate_on_startup
 
 
 def find_env_file():
@@ -120,3 +129,11 @@ class Settings(BaseSettings):
 
 # Singleton instance
 settings = Settings()
+
+# Validate on startup
+validate_on_startup(
+    service_name="Processor",
+    required_vars=["REDIS_URL", "CLICKHOUSE_HOST"],
+    optional_vars=["SENTRY_DSN", "SLACK_WEBHOOK_URL"],
+    env=settings.env
+)

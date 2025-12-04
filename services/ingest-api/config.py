@@ -3,115 +3,100 @@ Configuration module for Ingest API.
 Reads environment variables using pydantic-settings.
 """
 
+import sys
+import os
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, field_validator, model_validator
 from typing import Optional
 from pathlib import Path
 
-# Find .env file - walk up from current file to find project root
+# Add shared module to path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+
 def find_env_file():
+    """Find .env file in project root."""
     current = Path(__file__).resolve().parent
-    for _ in range(5):  # Go up max 5 levels
+    for _ in range(5):
         env_path = current / ".env"
         if env_path.exists():
             return str(env_path)
         current = current.parent
     return ".env"
 
+
 ENV_FILE = find_env_file()
 
 
 class Settings(BaseSettings):
     """
-    Application settings loaded from environment variables.
-    Create a .env file in the project root (copy from .env.example).
+    Ingest API settings with validation.
     """
+
+    # ----- Environment -----
+    env: str = Field(default="development", description="Environment")
+    debug: bool = Field(default=True, description="Enable debug mode")
 
     # ----- Queue Mode -----
     queue_mode: str = Field(
-        default="memory",
-        description="Queue mode: 'redis', 'upstash', or 'memory' (for local testing)"
+        default="redis",
+        description="Queue mode: 'redis' or 'memory' (for local testing)"
     )
     
-    # ----- Redis (standard protocol) -----
+    # ----- Redis -----
     redis_url: str = Field(
         default="redis://localhost:6379",
-        description="Redis connection URL (standard redis:// protocol)"
+        description="Redis connection URL"
     )
-    
-    # ----- Upstash REST API -----
-    redis_rest_url: Optional[str] = Field(
-        default=None,
-        description="Upstash REST API URL"
-    )
-    redis_rest_token: Optional[str] = Field(
-        default=None,
-        description="Upstash REST API token"
-    )
+    redis_rest_url: Optional[str] = Field(default=None, description="Upstash REST URL")
+    redis_rest_token: Optional[str] = Field(default=None, description="Upstash REST token")
 
     # ----- ClickHouse -----
-    clickhouse_host: str = Field(
-        default="localhost",
-        description="ClickHouse server host"
-    )
-    clickhouse_port: int = Field(
-        default=8123,
-        description="ClickHouse HTTP port"
-    )
-    clickhouse_user: str = Field(
-        default="default",
-        description="ClickHouse username"
-    )
-    clickhouse_password: str = Field(
-        default="",
-        description="ClickHouse password"
-    )
-    clickhouse_database: str = Field(
-        default="default",
-        description="ClickHouse database name"
-    )
+    clickhouse_host: str = Field(default="localhost")
+    clickhouse_port: int = Field(default=9000)
+    clickhouse_user: str = Field(default="default")
+    clickhouse_password: str = Field(default="")
+    clickhouse_database: str = Field(default="default")
 
     # ----- API Server -----
-    api_host: str = Field(
-        default="0.0.0.0",
-        description="Host to bind the API server"
-    )
-    api_port: int = Field(
-        default=8000,
-        description="Port to bind the API server"
-    )
-    debug: bool = Field(
-        default=True,
-        description="Enable debug mode"
-    )
-    env: str = Field(
-        default="development",
-        description="Environment: development, staging, or production"
-    )
+    api_host: str = Field(default="0.0.0.0")
+    api_port: int = Field(default=8001)
 
-    # ----- Monitoring (Optional) -----
-    sentry_dsn: Optional[str] = Field(
-        default=None,
-        description="Sentry DSN for error tracking"
-    )
+    # ----- Auth (Supabase) -----
+    supabase_url: str = Field(default="", description="Supabase Project URL")
+    supabase_service_key: str = Field(default="", description="Supabase Service Key")
 
-    # ----- Datadog APM -----
-    datadog_enabled: bool = Field(
-        default=False,
-        description="Enable Datadog APM tracing"
-    )
-    dd_service: str = Field(
-        default="lynex-ingest-api",
-        description="Datadog service name"
-    )
-    dd_env: str = Field(
-        default="development",
-        description="Datadog environment"
-    )
-    dd_version: str = Field(
-        default="1.0.0",
-        description="Application version for Datadog"
-    )
+    # ----- Monitoring -----
+    sentry_dsn: Optional[str] = Field(default=None)
+    datadog_enabled: bool = Field(default=False)
+    dd_service: str = Field(default="lynex-ingest-api")
+    dd_env: str = Field(default="development")
+    dd_version: str = Field(default="1.0.0")
+
+    @field_validator('env')
+    @classmethod
+    def validate_env(cls, v: str) -> str:
+        allowed = ['development', 'staging', 'production']
+        if v not in allowed:
+            raise ValueError(f"env must be one of: {allowed}")
+        return v
+
+    @field_validator('queue_mode')
+    @classmethod
+    def validate_queue_mode(cls, v: str) -> str:
+        allowed = ['redis', 'memory']
+        if v not in allowed:
+            raise ValueError(f"queue_mode must be one of: {allowed}")
+        return v
+
+    @model_validator(mode='after')
+    def validate_production(self) -> 'Settings':
+        """Validate production requirements."""
+        if self.env == 'production':
+            if not self.clickhouse_password:
+                import logging
+                logging.warning("CLICKHOUSE_PASSWORD not set in production")
+        return self
 
     class Config:
         env_file = ENV_FILE
@@ -120,5 +105,4 @@ class Settings(BaseSettings):
         extra = "ignore"
 
 
-# Singleton instance - import this in other modules
 settings = Settings()
