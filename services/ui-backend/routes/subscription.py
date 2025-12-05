@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Annotated
 
-from middleware.auth import get_current_user
+from auth.supabase_middleware import require_user, User
 from middleware.rate_limit import get_user_tier, get_user_usage, get_tier_limit
 from models.subscription import SubscriptionTier
 
@@ -16,12 +16,12 @@ class UsageResponse(BaseModel):
 
 @router.get("/usage", response_model=UsageResponse)
 async def get_usage(
-    user: Annotated[dict, Depends(get_current_user)]
+    user: User = Depends(require_user)
 ):
     """
     Get current subscription usage.
     """
-    user_id = user["sub"]
+    user_id = user.id
     
     tier = await get_user_tier(user_id)
     usage = await get_user_usage(user_id)

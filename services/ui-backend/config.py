@@ -80,9 +80,15 @@ class Settings(BaseSettings):
     admin_api_key: str = Field(default="dev-admin-key", description="Admin API key")
 
     # ----- CORS -----
-    cors_origins: List[str] = Field(
-        default=["http://localhost:3000", "http://localhost:5173"]
+    cors_origins_str: str = Field(
+        default="http://localhost:3000,http://localhost:5173",
+        alias="cors_origins"
     )
+    
+    @property
+    def cors_origins(self) -> List[str]:
+        """Get CORS origins as a list."""
+        return [origin.strip() for origin in self.cors_origins_str.split(',') if origin.strip()]
 
     @field_validator('env')
     @classmethod

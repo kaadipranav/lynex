@@ -10,8 +10,9 @@ import logging
 import uuid
 import difflib
 
-from auth import get_current_user
-from config import get_database
+from auth.supabase_middleware import require_user, User
+from shared.database import get_db
+from motor.motor_asyncio import AsyncIOMotorDatabase
 from models.prompt_version import (
     PromptVersion,
     PromptVersionCreate,
@@ -22,8 +23,6 @@ from models.prompt_version import (
 logger = logging.getLogger("watchllm.ui_backend.prompt_versions")
 
 router = APIRouter()
-db = get_database()
-
 
 # =============================================================================
 # Helper Functions
@@ -92,7 +91,7 @@ def compute_diff(version_a: dict, version_b: dict) -> PromptDiff:
     )
 
 
-async def get_latest_version_number(project_id: str, prompt_name: str) -> int:
+async def get_latest_version_number(db: AsyncIOMotorDatabase, project_id: str, prompt_name: str) -> int:
     """Get the latest version number for a prompt."""
     latest = await db["prompt_versions"].find_one(
         {"project_id": project_id, "prompt_name": prompt_name},
@@ -106,13 +105,16 @@ async def get_latest_version_number(project_id: str, prompt_name: str) -> int:
 # =============================================================================
 
 @router.get("/prompts", response_model=List[dict])
-async def list_prompts(user_data: dict = Depends(get_current_user)):
+async def list_prompts(
+    user: User = Depends(require_user),
+    db: AsyncIOMotorDatabase = Depends(get_db)
+):
     """
     List all unique prompts (grouped by name) for the project.
     Returns latest version of each prompt.
     """
     try:
-        project_id = user_data.get("project_id")
+        project_id = user.user_metadata.get("project_id", user.id)
         
         # Aggregate to get latest version of each prompt
         pipeline = [
@@ -152,13 +154,14 @@ async def list_prompts(user_data: dict = Depends(get_current_user)):
 @router.get("/prompts/{prompt_name}/versions", response_model=List[PromptVersionResponse])
 async def list_prompt_versions(
     prompt_name: str,
-    user_data: dict = Depends(get_current_user)
+    user: User = Depends(require_user),
+    db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """
     List all versions of a specific prompt.
     """
     try:
-        project_id = user_data.get("project_id")
+        project_id = user.user_metadata.get("project_id", user.id)
         
         versions = await db["prompt_versions"].find({
             "project_id": project_id,
@@ -181,18 +184,19 @@ async def list_prompt_versions(
 @router.post("/prompts", response_model=PromptVersionResponse, status_code=status.HTTP_201_CREATED)
 async def create_prompt_version(
     prompt_data: PromptVersionCreate,
-    user_data: dict = Depends(get_current_user)
+    user: User = Depends(require_user),
+    db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """
     Create a new version of a prompt template.
     Automatically increments version number.
     """
     try:
-        project_id = user_data.get("project_id")
-        user_id = user_data.get("user_id")
+        project_id = user.user_metadata.get("project_id", user.id)
+        user_id = user.id
         
         # Get next version number
-        version_number = await get_latest_version_number(project_id, prompt_data.prompt_name) + 1
+        version_number = await get_latest_version_number(db, project_id, prompt_data.prompt_name) + 1
         
         version_id = f"pv_{uuid.uuid4().hex[:12]}"
         
@@ -234,13 +238,14 @@ async def create_prompt_version(
 async def get_prompt_version(
     prompt_name: str,
     version_number: int,
-    user_data: dict = Depends(get_current_user)
+    user: User = Depends(require_user),
+    db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """
     Get a specific version of a prompt.
     """
     try:
-        project_id = user_data.get("project_id")
+        project_id = user.user_metadata.get("project_id", user.id)
         
         version = await db["prompt_versions"].find_one({
             "project_id": project_id,
@@ -272,7 +277,8 @@ async def diff_prompt_versions(
     prompt_name: str,
     version_a: int,
     version_b: int,
-    user_data: dict = Depends(get_current_user)
+    user: User = Depends(require_user),
+    db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """
     Compare two versions of a prompt and return the diff.
@@ -282,7 +288,7 @@ async def diff_prompt_versions(
     - version_b: Second version number to compare
     """
     try:
-        project_id = user_data.get("project_id")
+        project_id = user.user_metadata.get("project_id", user.id)
         
         # Fetch both versions
         ver_a = await db["prompt_versions"].find_one({
@@ -322,13 +328,14 @@ async def diff_prompt_versions(
 async def delete_prompt_version(
     prompt_name: str,
     version_number: int,
-    user_data: dict = Depends(get_current_user)
+    user: User = Depends(require_user),
+    db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """
     Delete a specific prompt version.
     """
     try:
-        project_id = user_data.get("project_id")
+        project_id = user.user_metadata.get("project_id", user.id)
         
         result = await db["prompt_versions"].delete_one({
             "project_id": project_id,

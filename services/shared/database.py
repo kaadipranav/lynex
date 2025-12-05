@@ -33,8 +33,8 @@ class Database:
             raise e
 
     @retry(
-        stop=stop_after_attempt(5),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
+        stop=stop_after_attempt(2),
+        wait=wait_exponential(multiplier=1, min=1, max=3),
         retry=retry_if_exception_type((ConnectionFailure, ServerSelectionTimeoutError, OSError)),
         reraise=True
     )

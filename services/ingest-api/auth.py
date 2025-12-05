@@ -173,13 +173,14 @@ async def get_api_key(
         
     return key_data
 
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={
-                "error": "Invalid API key format",
-                "message": "API key must be in format: sk_live_xxx or sk_test_xxx",
-                "docs": "https://docs.watchllm.dev/authentication"
-            }
-        )
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={
+            "error": "Invalid API key format",
+            "message": "API key must be in format: sk_live_xxx or sk_test_xxx",
+            "docs": "https://docs.watchllm.dev/authentication"
+        }
+    )
     
     # Look up key
     key_data = get_api_key_data(api_key)

@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: watchllm
+Version: 0.1.0
+Summary: Python SDK for WatchLLM
+Author: WatchLLM Team
+Requires-Python: >=3.8
+Requires-Dist: requests>=2.25.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: tenacity>=8.0.0
+Dynamic: author
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary

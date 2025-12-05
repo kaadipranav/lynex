@@ -14,6 +14,7 @@ import sys
 # Add shared module to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from sentry_sdk.integrations.fastapi import FastApiIntegration
 from shared.sentry_config import init_sentry
 from shared.logging_config import configure_logging
 from shared.database import db
@@ -100,19 +101,30 @@ async def lifespan(app: FastAPI):
     logger.info(f"   Debug mode: {settings.debug}")
     logger.info(f"   Server: {settings.api_host}:{settings.api_port}")
     
-    # Connect to MongoDB
-    db.connect()
-    await db.ping()
+    # Connect to MongoDB (optional for demo mode)
+    try:
+        db.connect()
+        await db.ping()
+        logger.info("✅ MongoDB connected")
+    except Exception as e:
+        logger.warning(f"⚠️ MongoDB not available (demo mode): {e}")
     
-    # Connect to Redis
-    await event_queue.get_redis_client()
+    # Connect to Redis (optional for demo mode)
+    try:
+        await event_queue.get_redis_client()
+        logger.info("✅ Redis connected")
+    except Exception as e:
+        logger.warning(f"⚠️ Redis not available (demo mode): {e}")
     
     yield
     
     # Shutdown
     logger.info("🛑 Shutting down...")
-    db.close()
-    await event_queue.close_redis_client()
+    try:
+        db.close()
+        await event_queue.close_redis_client()
+    except:
+        pass
 
 
 # =============================================================================

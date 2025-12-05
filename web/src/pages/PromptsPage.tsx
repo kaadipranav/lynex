@@ -41,7 +41,7 @@ export default function PromptsPage() {
   }, []);
 
   const fetchPrompts = async () => {
-    try:
+    try {
       setLoading(true);
       const response = await api.get('/prompts');
       setPrompts(response.data);

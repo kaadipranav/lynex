@@ -98,8 +98,14 @@ async def lifespan(app: FastAPI):
     logger.info(f"   Server: {settings.api_host}:{settings.api_port}")
     
     # Connect to MongoDB
-    db.connect()
-    await db.ping()
+    try:
+        db.connect()
+        await db.ping()
+        logger.info("   MongoDB: Connected ✅")
+    except Exception as e:
+        logger.error(f"   MongoDB: Connection failed ❌ - {e}")
+        if settings.env == "production":
+            raise e
     
     # Connect to ClickHouse
     try:

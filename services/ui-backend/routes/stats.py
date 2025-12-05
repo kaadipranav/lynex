@@ -105,6 +105,7 @@ async def get_overview_stats(
 async def get_token_usage_by_model(
     project_id: str = Query(..., description="Project ID"),
     hours: int = Query(24, ge=1, le=720),
+    user: User = Depends(require_user),
 ):
     """Get token usage grouped by model."""
     
@@ -158,6 +159,12 @@ async def get_token_usage_by_model(
     response_model=List[EventCountByType],
 )
 async def get_events_by_type(
+    project_id: str = Query(..., description="Project ID"),
+    hours: int = Query(24, ge=1, le=720),
+    user: User = Depends(require_user),
+):
+    """Get event count grouped by type."""
+    
     start_time = datetime.utcnow() - timedelta(hours=hours)
     
     sql = """
@@ -181,11 +188,6 @@ async def get_events_by_type(
         result = await client.query(sql, params)
         
         return [
-    try:
-        client = await ch.get_client()
-        result = await client.query(sql)
-        
-        return [
             EventCountByType(type=row["type"], count=row["count"])
             for row in result
         ]
@@ -207,6 +209,7 @@ async def get_timeseries(
     metric: str = Query(..., description="Metric: requests, errors, tokens, cost"),
     hours: int = Query(24, ge=1, le=720),
     interval: str = Query("1h", description="Time interval: 1m, 5m, 1h, 1d"),
+    user: User = Depends(require_user),
 ):
     """Get time series data for charting."""
     
@@ -222,8 +225,21 @@ async def get_timeseries(
     
     time_func = interval_map.get(interval, "toStartOfHour")
     
-    # Map metric to SQL
+    # Map metric to SQL value expression
     if metric == "requests":
+        value_sql = "count()"
+    elif metric == "errors":
+        value_sql = "countIf(type = 'error')"
+    elif metric == "tokens":
+        value_sql = "sum(JSONExtractInt(body, 'inputTokens') + JSONExtractInt(body, 'outputTokens'))"
+    elif metric == "cost":
+        value_sql = "sum(estimated_cost_usd)"
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": f"Unknown metric: {metric}"}
+        )
+    
     sql = f"""
     SELECT
         {time_func}(timestamp) as bucket,
@@ -243,16 +259,6 @@ async def get_timeseries(
     try:
         client = await ch.get_client()
         result = await client.query(sql, params)
-        
-        data = [t_id = '{project_id}'
-      AND timestamp >= '{start_time.isoformat()}'
-    GROUP BY bucket
-    ORDER BY bucket
-    """
-    
-    try:
-        client = await ch.get_client()
-        result = await client.query(sql)
         
         data = [
             TimeSeriesPoint(
