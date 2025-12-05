@@ -8,7 +8,7 @@ from redis.exceptions import ConnectionError, TimeoutError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from config import settings
 
-logger = logging.getLogger("lynex.ui.redis")
+logger = logging.getLogger("watchllm.ui.redis")
 
 redis_client: redis.Redis = None
 

@@ -1,5 +1,5 @@
 ﻿"""
-Lynex — Ingest API
+WatchLLM — Ingest API
 Main FastAPI application entry point.
 """
 
@@ -42,7 +42,7 @@ configure_logging(
     environment=settings.env,
     log_level="DEBUG" if settings.debug else "INFO"
 )
-logger = logging.getLogger("lynex.ingest")
+logger = logging.getLogger("watchllm.ingest")
 
 
 # =============================================================================
@@ -95,7 +95,7 @@ else:
 async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
     # Startup
-    logger.info("🚀 Lynex - Ingest API starting...")
+    logger.info("🚀 WatchLLM - Ingest API starting...")
     logger.info(f"   Debug mode: {settings.debug}")
     logger.info(f"   Server: {settings.api_host}:{settings.api_port}")
     
@@ -119,7 +119,7 @@ async def lifespan(app: FastAPI):
 # =============================================================================
 
 app = FastAPI(
-    title="Lynex - Ingest API",
+    title="WatchLLM - Ingest API",
     description="AI Observability Platform - Event Ingestion Service",
     version="1.0.0",
     lifespan=lifespan,
@@ -189,7 +189,7 @@ async def queue_health():
 async def root():
     """Root endpoint."""
     return {
-        "service": "Lynex - Ingest API",
+        "service": "WatchLLM - Ingest API",
         "version": "1.0.0",
         "docs": "/docs" if settings.debug else "Disabled in production"
     }

@@ -20,7 +20,7 @@ import redis_queue as event_queue
 from rate_limit import check_rate_limit
 
 
-logger = logging.getLogger("lynex.ingest.events")
+logger = logging.getLogger("watchllm.ingest.events")
 
 router = APIRouter()
 
@@ -76,7 +76,7 @@ async def ingest_event(
         )
     
     # Start custom trace span for Datadog (if available)
-    span_context = tracer.trace("event.ingest", service="lynex-ingest-api") if DDTRACE_AVAILABLE and tracer else None
+    span_context = tracer.trace("event.ingest", service="watchllm-ingest-api") if DDTRACE_AVAILABLE and tracer else None
     
     try:
         # Add custom tags for filtering in Datadog

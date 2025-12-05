@@ -1,7 +1,7 @@
 ﻿import functools
 import time
 from typing import Optional
-from .client import Lynex
+from .client import WatchLLM
 
 def monitor(name: Optional[str] = None):
     """
@@ -17,7 +17,7 @@ def monitor(name: Optional[str] = None):
         def wrapper(*args, **kwargs):
             client = None
             try:
-                client = Lynex.get_instance()
+                client = WatchLLM.get_instance()
             except:
                 # If SDK not initialized, just run the function
                 return func(*args, **kwargs)

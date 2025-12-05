@@ -17,17 +17,17 @@ import logging
 
 from billing import (
     get_subscription,
-    # get_usage_stats, # Not implemented yet
-    # check_usage_limit, # Not implemented yet
-    # update_subscription_from_whop, # Not implemented yet
-    # get_whop_client, # Not implemented yet
+    get_usage_stats,
+    check_usage_limit,
+    update_subscription_from_whop,
+    get_whop_client,
     Subscription,
     SubscriptionTier,
     TIER_LIMITS,
 )
 from config import settings
 
-logger = logging.getLogger("lynex.billing.routes")
+logger = logging.getLogger("watchllm.billing.routes")
 router = APIRouter()
 
 
@@ -59,10 +59,6 @@ async def get_user_subscription(user_id: str):
         "subscription": sub.dict(),
         "limits": limits,
         "usage_pct": (sub.events_used_this_period / limits["events_per_month"]) * 100
-    }
-
-        "subscription": sub.dict(),
-        "limits": limits,
     }
 
 
@@ -179,20 +175,25 @@ async def whop_webhook(
         # Subscription canceled or expired
         user_id = data.get("metadata", {}).get("user_id")
         if user_id:
-            from billing import SUBSCRIPTIONS
-            if user_id in SUBSCRIPTIONS:
-                SUBSCRIPTIONS[user_id]["status"] = "canceled"
-                SUBSCRIPTIONS[user_id]["tier"] = SubscriptionTier.FREE
+            from shared.database import get_db
+            db = await get_db()
+            await db.subscriptions.update_one(
+                {"user_id": user_id},
+                {"$set": {"status": "canceled", "tier": SubscriptionTier.FREE}}
+            )
     
     elif event_type == "payment.succeeded":
-        logger.info(f"Payment succeeded: {data.get('id')}")
-    
     elif event_type == "payment.failed":
         logger.warning(f"Payment failed: {data.get('id')}")
         user_id = data.get("membership", {}).get("metadata", {}).get("user_id")
         if user_id:
-            from billing import SUBSCRIPTIONS
-            if user_id in SUBSCRIPTIONS:
-                SUBSCRIPTIONS[user_id]["status"] = "past_due"
+            from shared.database import get_db
+            db = await get_db()
+            await db.subscriptions.update_one(
+                {"user_id": user_id},
+                {"$set": {"status": "past_due"}}
+            )
+    
+    return {"received": True}[user_id]["status"] = "past_due"
     
     return {"received": True}

@@ -13,7 +13,7 @@ import jwt
 
 from config import settings
 
-logger = logging.getLogger("lynex.auth")
+logger = logging.getLogger("watchllm.auth")
 
 
 # =============================================================================
@@ -57,7 +57,7 @@ class AuthResponse(BaseModel):
 USERS: dict[str, dict] = {
     "user_demo": {
         "id": "user_demo",
-        "email": "demo@lynex.dev",
+        "email": "demo@watchllm.dev",
         "name": "Demo User",
         "password_hash": hashlib.sha256("demo123".encode()).hexdigest(),
         "created_at": datetime(2024, 1, 1),

@@ -1,6 +1,6 @@
-# Lynex - Local Development Guide
+# WatchLLM - Local Development Guide
 
-This guide will help you run the entire Lynex stack locally using Docker.
+This guide will help you run the entire WatchLLM stack locally using Docker.
 
 ## Prerequisites
 
@@ -15,7 +15,7 @@ The `.env` file has been automatically configured with:
 - Docker service URLs (redis://redis, mongodb://mongodb)
 - Local ports
 
-**Verify:** Check `d:\Lynex\.env` exists and has `SUPABASE_URL` set.
+**Verify:** Check `.env` exists and has `SUPABASE_URL` set.
 
 ## Step 2: Start Backend Services
 

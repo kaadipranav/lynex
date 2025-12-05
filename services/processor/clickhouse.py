@@ -15,7 +15,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 
 from config import settings
 
-logger = logging.getLogger("lynex.processor.clickhouse")
+logger = logging.getLogger("watchllm.processor.clickhouse")
 
 # =============================================================================
 # ClickHouse Client

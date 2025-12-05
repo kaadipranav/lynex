@@ -9,9 +9,9 @@ import requests
 from typing import Optional, Dict, Any
 from datetime import datetime
 
-logger = logging.getLogger("lynex")
+logger = logging.getLogger("watchllm")
 
-class Lynex:
+class WatchLLM:
     _instance = None
 
     def __init__(self, api_key: str, project_id: str, host: str = "http://localhost:8000"):
@@ -25,7 +25,7 @@ class Lynex:
         
         # Register cleanup
         atexit.register(self.shutdown)
-        Lynex._instance = self
+        WatchLLM._instance = self
 
     @classmethod
     def init(cls, api_key: str, project_id: str, host: str = "http://localhost:8000"):

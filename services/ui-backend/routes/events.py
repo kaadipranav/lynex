@@ -12,7 +12,7 @@ from schemas import EventResponse, EventListResponse, ErrorResponse
 import clickhouse as ch
 from auth.supabase_middleware import require_user, User
 
-logger = logging.getLogger("lynex.query.events")
+logger = logging.getLogger("watchllm.query.events")
 router = APIRouter()
 
 
@@ -49,14 +49,23 @@ async def list_events(
         end_time = datetime.utcnow()
     
     # Build query
+    params = {
+        "project_id": project_id,
+        "start_time": start_time,
+        "end_time": end_time,
+        "limit": limit,
+        "offset": offset,
+    }
+    
     where_clauses = [
-        f"project_id = '{project_id}'",
-        f"timestamp >= '{start_time.isoformat()}'",
-        f"timestamp <= '{end_time.isoformat()}'",
+        "project_id = %(project_id)s",
+        "timestamp >= %(start_time)s",
+        "timestamp <= %(end_time)s",
     ]
     
     if type:
-        where_clauses.append(f"type = '{type}'")
+        where_clauses.append("type = %(type)s")
+        params["type"] = type
     
     where_sql = " AND ".join(where_clauses)
     
@@ -79,15 +88,15 @@ async def list_events(
     FROM events
     WHERE {where_sql}
     ORDER BY timestamp DESC
-    LIMIT {limit} OFFSET {offset}
+    LIMIT %(limit)s OFFSET %(offset)s
     """
     
     try:
         client = await ch.get_client()
         
         # Execute both queries
-        count_result = await client.query(count_sql)
-        events_result = await client.query(events_sql)
+        count_result = await client.query(count_sql, params)
+        events_result = await client.query(events_sql, params)
         
         total = count_result[0]["total"] if count_result else 0
         

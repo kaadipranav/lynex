@@ -7,7 +7,7 @@ from datetime import datetime
 from models.subscription import SubscriptionTier, TIER_LIMITS
 from redis_queue import get_redis_client
 
-logger = logging.getLogger("lynex.ingest.rate_limit")
+logger = logging.getLogger("watchllm.ingest.rate_limit")
 
 TIER_KEY_PREFIX = "user:tier:"
 USAGE_KEY_PREFIX = "user:usage:"

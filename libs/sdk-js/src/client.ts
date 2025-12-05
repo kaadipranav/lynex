@@ -1,23 +1,23 @@
 ﻿import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
-import type { LynexConfig, LynexEvent, EventBody, TokenUsageBody } from './types';
+import type { WatchLLMConfig, WatchLLMEvent, EventBody, TokenUsageBody } from './types';
 
-const SDK_NAME = 'lynex-js';
+const SDK_NAME = 'watchllm-js';
 const SDK_VERSION = '0.1.0';
 
 function generateUUID(): string {
   return uuidv4();
 }
 
-export class Lynex {
-  private static instance: Lynex | null = null;
+export class WatchLLM {
+  private static instance: WatchLLM | null = null;
   
-  private config: Required<LynexConfig>;
-  private queue: LynexEvent[] = [];
+  private config: Required<WatchLLMConfig>;
+  private queue: WatchLLMEvent[] = [];
   private flushTimer: ReturnType<typeof setInterval> | null = null;
   private isFlushing = false;
 
-  constructor(config: LynexConfig) {
+  constructor(config: WatchLLMConfig) {
     this.config = {
       apiKey: config.apiKey,
       projectId: config.projectId,
@@ -29,27 +29,27 @@ export class Lynex {
 
     this.startFlushTimer();
     this.setupShutdownHandlers();
-    Lynex.instance = this;
+    WatchLLM.instance = this;
   }
 
-  static init(config: LynexConfig): Lynex {
-    if (Lynex.instance) {
-      console.warn('Lynex already initialized');
-      return Lynex.instance;
+  static init(config: WatchLLMConfig): WatchLLM {
+    if (WatchLLM.instance) {
+      console.warn('WatchLLM already initialized');
+      return WatchLLM.instance;
     }
-    return new Lynex(config);
+    return new WatchLLM(config);
   }
 
-  static getInstance(): Lynex {
-    if (!Lynex.instance) {
-      throw new Error('Lynex not initialized. Call Lynex.init() first.');
+  static getInstance(): WatchLLM {
+    if (!WatchLLM.instance) {
+      throw new Error('WatchLLM not initialized. Call WatchLLM.init() first.');
     }
-    return Lynex.instance;
+    return WatchLLM.instance;
   }
 
   private log(...args: any[]) {
     if (this.config.debug) {
-      console.log('[Lynex]', ...args);
+      console.log('[WatchLLM]', ...args);
     }
   }
 

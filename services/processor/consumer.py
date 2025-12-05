@@ -15,15 +15,15 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from config import settings
 from handlers import process_event
 
-logger = logging.getLogger("lynex.processor.consumer")
+logger = logging.getLogger("watchllm.processor.consumer")
 
 
 # =============================================================================
 # Constants
 # =============================================================================
 
-EVENTS_STREAM = "lynex:events:incoming"
-CONSUMER_GROUP = "lynex-processors"
+EVENTS_STREAM = "watchllm:events:incoming"
+CONSUMER_GROUP = "watchllm-processors"
 CONSUMER_NAME = f"processor-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
 
 # How many events to fetch per batch

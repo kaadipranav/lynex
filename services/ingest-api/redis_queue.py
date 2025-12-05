@@ -18,7 +18,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from config import settings
 from schemas import EventEnvelope
 
-logger = logging.getLogger("lynex.ingest.queue")
+logger = logging.getLogger("watchllm.ingest.queue")
 
 # =============================================================================
 # In-Memory Queue Fallback (for testing without Redis)
@@ -90,7 +90,7 @@ async def close_redis_client():
 # Queue Constants
 # =============================================================================
 
-EVENTS_STREAM = "lynex:events:incoming"
+EVENTS_STREAM = "watchllm:events:incoming"
 MAX_STREAM_LENGTH = 100000  # Trim stream to prevent unbounded growth
 
 

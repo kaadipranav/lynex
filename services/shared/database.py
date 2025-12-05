@@ -10,7 +10,7 @@ from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from typing import Optional
 
-logger = logging.getLogger("lynex.database")
+logger = logging.getLogger("watchllm.database")
 
 class Database:
     client: Optional[AsyncIOMotorClient] = None
@@ -19,7 +19,7 @@ class Database:
     def connect(self):
         """Connect to MongoDB."""
         mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
-        db_name = os.getenv("MONGO_DB_NAME", "lynex")
+        db_name = os.getenv("MONGO_DB_NAME", "watchllm")
         
         try:
             self.client = AsyncIOMotorClient(

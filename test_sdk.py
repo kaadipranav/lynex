@@ -1,6 +1,6 @@
 ﻿import os
 import time
-from lynex import Lynex
+from watchllm import WatchLLM
 
 # Initialize SDK
 # Use the mock key we defined in auth.py
@@ -8,7 +8,7 @@ API_KEY = "sk_test_demo1234567890abcdefghijklmno"
 PROJECT_ID = "proj_demo"
 HOST = "http://localhost:8000"
 
-client = Lynex(api_key=API_KEY, project_id=PROJECT_ID, host=HOST)
+client = WatchLLM(api_key=API_KEY, project_id=PROJECT_ID, host=HOST)
 
 print("🚀 Sending test events...")
 

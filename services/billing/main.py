@@ -1,5 +1,5 @@
 ﻿"""
-Lynex — Billing Service
+WatchLLM — Billing Service
 Handles subscriptions, usage tracking, and Whop integration.
 """
 
@@ -29,7 +29,7 @@ configure_logging(
     environment=settings.env,
     log_level="DEBUG" if settings.debug else "INFO"
 )
-logger = logging.getLogger("lynex.billing")
+logger = logging.getLogger("watchllm.billing")
 
 
 # =============================================================================
@@ -53,7 +53,7 @@ init_sentry(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
-    logger.info("🚀 Lynex - Billing Service starting...")
+    logger.info("🚀 WatchLLM - Billing Service starting...")
     
     # Connect to MongoDB
     db.connect()
@@ -70,7 +70,7 @@ async def lifespan(app: FastAPI):
 # =============================================================================
 
 app = FastAPI(
-    title="Lynex - Billing Service",
+    title="WatchLLM - Billing Service",
     description="Subscription and usage management with Whop",
     version="1.0.0",
     lifespan=lifespan,
@@ -99,7 +99,7 @@ app.add_middleware(
 @app.get("/")
 async def root():
     return {
-        "service": "Lynex - Billing Service",
+        "service": "WatchLLM - Billing Service",
         "version": "1.0.0",
     }
 

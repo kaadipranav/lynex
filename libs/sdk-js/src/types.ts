@@ -1,4 +1,4 @@
-﻿export interface LynexConfig {
+﻿export interface WatchLLMConfig {
   apiKey: string;
   projectId: string;
   host?: string;
@@ -11,7 +11,7 @@ export interface EventBody {
   [key: string]: any;
 }
 
-export interface LynexEvent {
+export interface WatchLLMEvent {
   eventId: string;
   projectId: string;
   type: string;

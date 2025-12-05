@@ -7,7 +7,7 @@ import logging
 import hashlib
 import hmac
 from typing import Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from dataclasses import dataclass
 from pydantic import BaseModel
@@ -15,7 +15,7 @@ from pydantic import BaseModel
 import httpx
 from shared.database import get_db
 
-logger = logging.getLogger("lynex.billing")
+logger = logging.getLogger("watchllm.billing")
 
 
 # =============================================================================
@@ -84,11 +84,12 @@ async def get_subscription(user_id: str) -> Subscription:
     db = await get_db()
     sub_doc = await db.subscriptions.find_one({"user_id": user_id})
     
+    now = datetime.utcnow()
+    
     if not sub_doc:
         # Create default free subscription
-        now = datetime.utcnow()
-        # End date is 100 years from now for free tier
-        end_date = datetime(now.year + 100, now.month, now.day)
+        # End date is 1 month from now for free tier
+        end_date = now + timedelta(days=30)
         
         sub_doc = {
             "user_id": user_id,
@@ -101,6 +102,39 @@ async def get_subscription(user_id: str) -> Subscription:
             "events_used_this_period": 0,
         }
         await db.subscriptions.insert_one(sub_doc)
+    
+    # Check for period reset (Lazy check)
+    # If current time is past period end, reset usage and update period
+    # This is critical for Free tier auto-renewal
+    current_end = sub_doc.get("current_period_end")
+    if isinstance(current_end, str):
+        current_end = datetime.fromisoformat(current_end)
+        
+    if current_end and now > current_end:
+        # If it's a free tier, auto-renew
+        if sub_doc.get("tier") == SubscriptionTier.FREE:
+            new_start = now
+            new_end = now + timedelta(days=30)
+            
+            await db.subscriptions.update_one(
+                {"user_id": user_id},
+                {
+                    "$set": {
+                        "current_period_start": new_start,
+                        "current_period_end": new_end,
+                        "events_used_this_period": 0
+                    }
+                }
+            )
+            # Update local doc
+            sub_doc["current_period_start"] = new_start
+            sub_doc["current_period_end"] = new_end
+            sub_doc["events_used_this_period"] = 0
+            logger.info(f"Auto-renewed free subscription for {user_id}")
+            
+        # For paid tiers, we usually wait for webhook, but if it's way past due,
+        # we might want to reset usage anyway if we assume they are still active?
+        # For now, let's only auto-renew Free tier to avoid conflicts with Whop.
         
     return Subscription(**sub_doc)
 
@@ -172,70 +206,47 @@ class WhopClient:
             payload,
             hashlib.sha256
         ).hexdigest()
-        
-        return hmac.compare_digest(expected, signature)
-    
-    async def close(self):
-        await self.client.aclose()
-
-
-# Global client instance
-_whop_client: Optional[WhopClient] = None
-
-
-def get_whop_client(api_key: str = "", webhook_secret: str = "") -> WhopClient:
-    global _whop_client
-    if _whop_client is None:
-        _whop_client = WhopClient(api_key, webhook_secret)
-    return _whop_client
-
-
-# =============================================================================
-# Subscription Management
-# =============================================================================
-
-async def get_subscription(user_id: str) -> Subscription:
-    """Get user's subscription, create free tier if not exists."""
-    if user_id not in SUBSCRIPTIONS:
-        now = datetime.utcnow()
-        SUBSCRIPTIONS[user_id] = {
-            "user_id": user_id,
-            "tier": SubscriptionTier.FREE,
-            "whop_membership_id": None,
-            "whop_plan_id": None,
-            "status": "active",
-            "current_period_start": now,
-            "current_period_end": datetime(now.year, now.month + 1 if now.month < 12 else 1, 1),
-            "events_used_this_period": 0,
-        }
-    
-    return Subscription(**SUBSCRIPTIONS[user_id])
-
-
 async def update_subscription_from_whop(user_id: str, membership_data: dict):
     """Update subscription based on Whop membership data."""
+    db = await get_db()
     
     # Map Whop plan to our tier
     plan_id = membership_data.get("plan", {}).get("id", "")
     tier = map_whop_plan_to_tier(plan_id)
     
-    sub = SUBSCRIPTIONS.get(user_id, {})
-    sub.update({
-        "user_id": user_id,
+    new_start = datetime.fromisoformat(membership_data.get("renewal_period_start", datetime.utcnow().isoformat()))
+    new_end = datetime.fromisoformat(membership_data.get("renewal_period_end", datetime.utcnow().isoformat()))
+    
+    # Check if we need to reset usage (new period)
+    # We fetch existing to compare
+    existing = await db.subscriptions.find_one({"user_id": user_id})
+    reset_usage = False
+    if existing:
+        old_start = existing.get("current_period_start")
+        # If start date changed significantly (more than a day), it's a new period
+        if old_start and abs((new_start - old_start).total_seconds()) > 86400:
+            reset_usage = True
+    
+    update_data = {
         "tier": tier,
         "whop_membership_id": membership_data.get("id"),
         "whop_plan_id": plan_id,
         "status": "active" if membership_data.get("valid") else "canceled",
-        "current_period_start": datetime.fromisoformat(membership_data.get("renewal_period_start", datetime.utcnow().isoformat())),
-        "current_period_end": datetime.fromisoformat(membership_data.get("renewal_period_end", datetime.utcnow().isoformat())),
-    })
+        "current_period_start": new_start,
+        "current_period_end": new_end,
+    }
     
-    SUBSCRIPTIONS[user_id] = sub
+    if reset_usage:
+        update_data["events_used_this_period"] = 0
+        logger.info(f"Resetting usage for {user_id} due to new billing period")
+    
+    await db.subscriptions.update_one(
+        {"user_id": user_id},
+        {"$set": update_data},
+        upsert=True
+    )
+    
     logger.info(f"Updated subscription for {user_id}: {tier}")
-
-
-def map_whop_plan_to_tier(plan_id: str) -> SubscriptionTier:
-    """Map Whop plan ID to our subscription tier."""
     # Configure these with your actual Whop plan IDs
     PLAN_MAPPING = {
         "plan_pro_monthly": SubscriptionTier.PRO,
@@ -246,23 +257,35 @@ def map_whop_plan_to_tier(plan_id: str) -> SubscriptionTier:
     return PLAN_MAPPING.get(plan_id, SubscriptionTier.FREE)
 
 
+async def update_subscription_from_whop(user_id: str, membership_data: dict):
+    """Update subscription based on Whop membership data."""
+    db = await get_db()
+    
+    # Map Whop plan to our tier
+    plan_id = membership_data.get("plan", {}).get("id", "")
+    tier = map_whop_plan_to_tier(plan_id)
+    
+    update_data = {
+        "tier": tier,
+        "whop_membership_id": membership_data.get("id"),
+        "whop_plan_id": plan_id,
+        "status": "active" if membership_data.get("valid") else "canceled",
+        "current_period_start": datetime.fromisoformat(membership_data.get("renewal_period_start", datetime.utcnow().isoformat())),
+        "current_period_end": datetime.fromisoformat(membership_data.get("renewal_period_end", datetime.utcnow().isoformat())),
+    }
+    
+    await db.subscriptions.update_one(
+        {"user_id": user_id},
+        {"$set": update_data},
+        upsert=True
+    )
+    
+    logger.info(f"Updated subscription for {user_id}: {tier}")
+
+
 # =============================================================================
 # Usage Tracking
 # =============================================================================
-
-async def record_usage(user_id: str, project_id: str, event_count: int = 1):
-    """Record event usage for a user/project."""
-    
-    if user_id in SUBSCRIPTIONS:
-        SUBSCRIPTIONS[user_id]["events_used_this_period"] += event_count
-    
-    USAGE_LOG.append({
-        "user_id": user_id,
-        "project_id": project_id,
-        "event_count": event_count,
-        "timestamp": datetime.utcnow(),
-    })
-
 
 async def check_usage_limit(user_id: str) -> tuple[bool, dict]:
     """Check if user is within their usage limits."""

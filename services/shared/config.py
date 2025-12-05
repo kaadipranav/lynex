@@ -11,7 +11,7 @@ from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
 from pathlib import Path
 
-logger = logging.getLogger("lynex.config")
+logger = logging.getLogger("watchllm.config")
 
 
 def find_env_file() -> str:

@@ -30,6 +30,7 @@ except ImportError:
 from consumer import EventConsumer
 from config import settings
 import clickhouse
+from alerts import rule_manager
 
 # =============================================================================
 # Logging Setup
@@ -40,7 +41,7 @@ configure_logging(
     environment=settings.env,
     log_level="DEBUG" if settings.debug else "INFO"
 )
-logger = logging.getLogger("lynex.processor")
+logger = logging.getLogger("watchllm.processor")
 
 
 # =============================================================================
@@ -67,6 +68,15 @@ def signal_handler(sig, frame):
     shutdown_event.set()
 
 
+async def refresh_rules_loop(shutdown_event: asyncio.Event):
+    """Periodically refresh alert rules."""
+    while not shutdown_event.is_set():
+        await rule_manager.load_rules()
+        try:
+            await asyncio.wait_for(shutdown_event.wait(), timeout=60)
+        except asyncio.TimeoutError:
+            continue
+
 
 # =============================================================================
 # Main Worker Loop
@@ -74,7 +84,7 @@ def signal_handler(sig, frame):
 
 async def main():
     """Main worker entry point."""
-    logger.info("🚀 Lynex - Processor Worker starting...")
+    logger.info("🚀 WatchLLM - Processor Worker starting...")
     logger.info(f"   Debug mode: {settings.debug}")
     logger.info(f"   Redis: {settings.redis_url[:30]}...")
     logger.info(f"   ClickHouse: {settings.clickhouse_host}:{settings.clickhouse_port}")
@@ -93,12 +103,18 @@ async def main():
     # Initialize Datadog APM
     if settings.datadog_enabled and DDTRACE_AVAILABLE:
         os.environ["DD_SERVICE"] = settings.dd_service
-        os.environ["DD_ENV"] = settings.dd_env
-        os.environ["DD_VERSION"] = settings.dd_version
-        patch_all()
-        logger.info(f"✅ Datadog APM initialized (service: {settings.dd_service})")
-    elif settings.datadog_enabled and not DDTRACE_AVAILABLE:
-        logger.warning("⚠️  Datadog enabled but ddtrace not available (Python 3.13+ compatibility issue)")
+    # Connect to MongoDB
+    db.connect()
+    await db.ping()
+    
+    # Load initial rules
+    await rule_manager.load_rules()
+    
+    # Start rule refresh task
+    refresh_task = asyncio.create_task(refresh_rules_loop(shutdown_event))
+    
+    # Create consumer
+    consumer = EventConsumer()tadog enabled but ddtrace not available (Python 3.13+ compatibility issue)")
     else:
         logger.info("ℹ️  Datadog APM disabled")
     
@@ -116,10 +132,17 @@ async def main():
         # Connect to ClickHouse
         try:
             await clickhouse.get_clickhouse_client()
-            logger.info("   ClickHouse: Connected ✅")
-        except Exception as e:
-            logger.error(f"   ClickHouse: Connection failed ❌ - {e}")
-            logger.error("   Processor cannot function without ClickHouse.")
+    finally:
+        # Cleanup
+        if 'refresh_task' in locals():
+            refresh_task.cancel()
+            try:
+                await refresh_task
+            except asyncio.CancelledError:
+                pass
+        
+        db.close()
+        await consumer.close()rocessor cannot function without ClickHouse.")
             raise e
         
         # Start consuming events

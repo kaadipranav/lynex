@@ -1,7 +1,7 @@
 {
-  "name": "@lynex/sdk",
+  "name": "@watchllm/sdk",
   "version": "0.1.0",
-  "description": "JavaScript/TypeScript SDK for Lynex - AI Observability Platform",
+  "description": "JavaScript/TypeScript SDK for WatchLLM - AI Observability Platform",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",

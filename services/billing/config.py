@@ -71,7 +71,7 @@ class Settings(BaseSettings):
         description="Enable Datadog APM tracing"
     )
     dd_service: str = Field(
-        default="lynex-billing",
+        default="watchllm-billing",
         description="Datadog service name"
     )
     dd_env: str = Field(

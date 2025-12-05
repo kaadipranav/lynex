@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# Lynex - Environment Setup & Validation Script
+# WatchLLM - Environment Setup & Validation Script
 # =============================================================================
 # This script validates that all required environment variables are set
 # and tests connections to external services.
@@ -26,7 +26,7 @@ NC='\033[0m' # No Color
 ENVIRONMENT=${1:-development}
 
 echo -e "${BLUE}==============================================================================${NC}"
-echo -e "${BLUE}  Lynex - Environment Setup & Validation${NC}"
+echo -e "${BLUE}  WatchLLM - Environment Setup & Validation${NC}"
 echo -e "${BLUE}  Environment: ${ENVIRONMENT}${NC}"
 echo -e "${BLUE}==============================================================================${NC}"
 echo ""

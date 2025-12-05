@@ -13,8 +13,8 @@ export interface AuthResponse {
   expires_at: string;
 }
 
-const TOKEN_KEY = 'lynex_token';
-const USER_KEY = 'lynex_user';
+const TOKEN_KEY = 'watchllm_token';
+const USER_KEY = 'watchllm_user';
 
 export const authApi = {
   signup: async (email: string, password: string, name?: string) => {

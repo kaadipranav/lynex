@@ -1,4 +1,4 @@
-## Lynex — AI Observability Platform
+## WatchLLM — AI Observability Platform
 
 <div align="center">
 
@@ -85,7 +85,7 @@ flowchart LR
 ---
 
 ### SDK implementation
-```118:134:libs/sdk-python/lynex/client.py
+```118:134:libs/sdk-python/watchllm/client.py
     def capture_llm_usage(self, model: str, input_tokens: int, output_tokens: int, cost: float = 0.0):
         body = {
             "model": model,
@@ -151,5 +151,5 @@ flowchart LR
 ---
 
 ### Contact
-Building Lynex as a focused AI observability control plane. If you are operating production LLM or agent workloads and care about traceability, reliability, and cost discipline, this is the surface I am extending.  
+Building WatchLLM as a focused AI observability control plane. If you are operating production LLM or agent workloads and care about traceability, reliability, and cost discipline, this is the surface I am extending.  
 

@@ -1,5 +1,5 @@
 ﻿"""
-Lynex — Query API (UI Backend)
+WatchLLM — Query API (UI Backend)
 Provides read-only endpoints for the dashboard.
 """
 
@@ -34,6 +34,7 @@ from routes.projects import router as projects_router
 from routes.auth import router as auth_router
 from routes.admin import router as admin_router
 from routes.subscription import router as subscription_router
+from routes.alerts import router as alerts_router
 import clickhouse as ch
 import redis_client
 
@@ -46,7 +47,7 @@ configure_logging(
     environment=settings.env,
     log_level="DEBUG" if settings.debug else "INFO"
 )
-logger = logging.getLogger("lynex.query")
+logger = logging.getLogger("watchllm.query")
 
 
 # =============================================================================
@@ -90,7 +91,7 @@ else:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
-    logger.info("🚀 Lynex - UI Backend starting...")
+    logger.info("🚀 WatchLLM - UI Backend starting...")
     logger.info(f"   Server: {settings.api_host}:{settings.api_port}")
     
     # Connect to MongoDB
@@ -129,7 +130,7 @@ async def lifespan(app: FastAPI):
 # =============================================================================
 
 app = FastAPI(
-    title="Lynex - Query API",
+    title="WatchLLM - Query API",
     description="Read-only API for dashboard queries",
     version="1.0.0",
     lifespan=lifespan,
@@ -157,7 +158,7 @@ app.add_middleware(
 @app.get("/")
 async def root():
     return {
-        "service": "Lynex - Query API",
+        "service": "WatchLLM - Query API",
         "version": "1.0.0",
     }
 
@@ -177,6 +178,7 @@ app.include_router(projects_router, prefix="/api/v1", tags=["Projects"])
 app.include_router(auth_router, prefix="/api/v1", tags=["Authentication"])
 app.include_router(subscription_router, prefix="/api/v1", tags=["Subscription"])
 app.include_router(admin_router, prefix="/api/v1", tags=["Admin"])
+app.include_router(alerts_router, prefix="/api/v1", tags=["Alerts"])
 
 
 # =============================================================================

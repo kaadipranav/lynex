@@ -19,7 +19,7 @@
 set -e
 
 # Configuration
-DROPLET_NAME="lynex-clickhouse"
+DROPLET_NAME="watchllm-clickhouse"
 REGION="nyc1"
 SIZE="s-1vcpu-1gb"  # $6/mo - 1 vCPU, 1GB RAM, 25GB SSD
 IMAGE="ubuntu-22-04-x64"
@@ -32,7 +32,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 echo -e "${GREEN}==============================================================================${NC}"
-echo -e "${GREEN}  Lynex - ClickHouse Deployment Script${NC}"
+echo -e "${GREEN}  WatchLLM - ClickHouse Deployment Script${NC}"
 echo -e "${GREEN}==============================================================================${NC}"
 echo ""
 
@@ -171,7 +171,7 @@ echo ""
 echo -e "${YELLOW}Step 5: Configuring firewall...${NC}"
 
 # Create firewall if it doesn't exist
-FIREWALL_NAME="lynex-clickhouse-fw"
+FIREWALL_NAME="watchllm-clickhouse-fw"
 EXISTING_FW=$(doctl compute firewall list --format Name --no-header | grep -w "$FIREWALL_NAME" || true)
 
 if [ -z "$EXISTING_FW" ]; then

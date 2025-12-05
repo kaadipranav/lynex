@@ -11,7 +11,7 @@ import clickhouse
 import alerts
 import notifiers
 
-logger = logging.getLogger("lynex.processor.handlers")
+logger = logging.getLogger("watchllm.processor.handlers")
 
 
 # =============================================================================

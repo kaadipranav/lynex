@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     # ----- Monitoring -----
     sentry_dsn: Optional[str] = Field(default=None, description="Sentry DSN")
     datadog_enabled: bool = Field(default=False)
-    dd_service: str = Field(default="lynex-ui-backend")
+    dd_service: str = Field(default="watchllm-ui-backend")
     dd_env: str = Field(default="development")
     dd_version: str = Field(default="1.0.0")
 

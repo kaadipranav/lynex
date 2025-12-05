@@ -32,7 +32,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       <nav className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-8">
-            <span className="text-xl font-bold text-indigo-600">Lynex</span>
+            <span className="text-xl font-bold text-indigo-600">WatchLLM</span>
             <div className="flex gap-4 text-sm font-medium text-gray-600">
               <Link to="/" className="hover:text-indigo-600">Dashboard</Link>
               <Link to="/events" className="hover:text-indigo-600">Events</Link>
