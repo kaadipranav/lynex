@@ -10,6 +10,8 @@ import UsagePage from './pages/UsagePage'
 import TracesPage from './pages/TracesPage'
 import TraceView from './pages/TraceView'
 import AlertsPage from './pages/AlertsPage'
+import PromptsPage from './pages/PromptsPage'
+import PromptDetailPage from './pages/PromptDetailPage'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { ProjectProvider } from './hooks/useProject'
 import ProjectSelector from './components/ProjectSelector'
@@ -42,6 +44,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               <Link to="/" className="hover:text-indigo-600">Dashboard</Link>
               <Link to="/events" className="hover:text-indigo-600">Events</Link>
               <Link to="/traces" className="hover:text-indigo-600">Traces</Link>
+              <Link to="/prompts" className="hover:text-indigo-600">Prompts</Link>
               <Link to="/alerts" className="hover:text-indigo-600">Alerts</Link>
               <Link to="/usage" className="hover:text-indigo-600">Usage</Link>
               <Link to="/settings" className="hover:text-indigo-600">Settings</Link>
@@ -95,6 +98,16 @@ function AppRoutes() {
       <Route path="/alerts" element={
         <ProtectedRoute>
           <Layout><AlertsPage /></Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/prompts" element={
+        <ProtectedRoute>
+          <Layout><PromptsPage /></Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/prompts/:promptName" element={
+        <ProtectedRoute>
+          <Layout><PromptDetailPage /></Layout>
         </ProtectedRoute>
       } />
       <Route path="/settings" element={

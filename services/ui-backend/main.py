@@ -36,8 +36,10 @@ from routes.admin import router as admin_router
 from routes.subscription import router as subscription_router
 from routes.alerts import router as alerts_router
 from routes.traces import router as traces_router
+from routes.prompt_versions import router as prompt_versions_router
 import clickhouse as ch
 import redis_client
+import metrics as prom_metrics
 
 # =============================================================================
 # Logging Setup
@@ -173,6 +175,16 @@ async def health():
     except:
         return {"status": "degraded", "clickhouse": "unavailable"}
 
+
+@app.get("/metrics", tags=["Monitoring"])
+async def metrics():
+    """Prometheus metrics endpoint for monitoring."""
+    from fastapi.responses import Response
+    return Response(
+        content=prom_metrics.get_metrics(),
+        media_type=prom_metrics.get_content_type(),
+    )
+
 app.include_router(events_router, prefix="/api/v1", tags=["Events"])
 app.include_router(stats_router, prefix="/api/v1", tags=["Statistics"])
 app.include_router(projects_router, prefix="/api/v1", tags=["Projects"])
@@ -181,6 +193,7 @@ app.include_router(subscription_router, prefix="/api/v1", tags=["Subscription"])
 app.include_router(admin_router, prefix="/api/v1", tags=["Admin"])
 app.include_router(alerts_router, prefix="/api/v1", tags=["Alerts"])
 app.include_router(traces_router, prefix="/api/v1", tags=["Traces"])
+app.include_router(prompt_versions_router, prefix="/api/v1", tags=["Prompt Versions"])
 
 
 # =============================================================================

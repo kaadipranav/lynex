@@ -31,6 +31,7 @@ from config import settings
 from schemas import HealthResponse
 from routes.events import router as events_router
 import redis_queue as event_queue
+import metrics as prom_metrics
 
 
 # =============================================================================
@@ -171,6 +172,17 @@ async def health_check():
     redis_healthy = await event_queue.health_check()
     status = "healthy" if redis_healthy else "degraded"
     return HealthResponse(status=status)
+
+
+# Prometheus metrics endpoint
+@app.get("/metrics", tags=["Monitoring"])
+async def metrics():
+    """Prometheus metrics endpoint for monitoring."""
+    from fastapi.responses import Response
+    return Response(
+        content=prom_metrics.get_metrics(),
+        media_type=prom_metrics.get_content_type(),
+    )
 
 
 # Queue stats endpoint

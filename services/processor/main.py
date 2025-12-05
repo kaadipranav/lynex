@@ -1,4 +1,4 @@
-﻿"""
+"""
 Processor Worker - Main Entry Point
 Consumes events from Redis Stream and processes them.
 """
@@ -31,6 +31,7 @@ from consumer import EventConsumer
 from config import settings
 import clickhouse
 from alerts import rule_manager
+from s3_archiver import get_archiver
 
 # =============================================================================
 # Logging Setup
@@ -89,20 +90,15 @@ async def main():
     logger.info(f"   Redis: {settings.redis_url[:30]}...")
     logger.info(f"   ClickHouse: {settings.clickhouse_host}:{settings.clickhouse_port}")
     
-    # Initialize Sentry
-    import sys
-    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-    from shared.sentry_config import init_sentry
-    
-    init_sentry(
-        dsn=settings.sentry_dsn,
-        environment=settings.env,
-        service_name="processor"
-    )
-    
     # Initialize Datadog APM
     if settings.datadog_enabled and DDTRACE_AVAILABLE:
         os.environ["DD_SERVICE"] = settings.dd_service
+        logger.info("✅ Datadog APM enabled")
+    elif settings.datadog_enabled:
+        logger.warning("⚠️  Datadog enabled but ddtrace not available (Python 3.13+ compatibility issue)")
+    else:
+        logger.info("ℹ️  Datadog APM disabled")
+    
     # Connect to MongoDB
     db.connect()
     await db.ping()
@@ -113,14 +109,13 @@ async def main():
     # Start rule refresh task
     refresh_task = asyncio.create_task(refresh_rules_loop(shutdown_event))
     
-    # Create consumer
-    consumer = EventConsumer()tadog enabled but ddtrace not available (Python 3.13+ compatibility issue)")
-    else:
-        logger.info("ℹ️  Datadog APM disabled")
+    # Connect to ClickHouse first (needed by archiver)
+    ch_client = await clickhouse.get_clickhouse_client()
     
-    # Connect to MongoDB
-    db.connect()
-    await db.ping()
+    # Start S3 archival task (runs in background)
+    archiver = get_archiver(ch_client)
+    archival_task = asyncio.create_task(archiver.start_archival_loop())
+    logger.info("🗄️  S3 archival loop started")
     
     # Create consumer
     consumer = EventConsumer()
@@ -128,22 +123,6 @@ async def main():
     try:
         # Initialize consumer (connect to Redis, create consumer group)
         await consumer.initialize()
-        
-        # Connect to ClickHouse
-        try:
-            await clickhouse.get_clickhouse_client()
-    finally:
-        # Cleanup
-        if 'refresh_task' in locals():
-            refresh_task.cancel()
-            try:
-                await refresh_task
-            except asyncio.CancelledError:
-                pass
-        
-        db.close()
-        await consumer.close()rocessor cannot function without ClickHouse.")
-            raise e
         
         # Start consuming events
         logger.info("📥 Starting event consumption loop...")
@@ -156,6 +135,20 @@ async def main():
         sys.exit(1)
     finally:
         # Cleanup
+        if 'refresh_task' in locals():
+            refresh_task.cancel()
+            try:
+                await refresh_task
+            except asyncio.CancelledError:
+                pass
+        
+        if 'archival_task' in locals():
+            archival_task.cancel()
+            try:
+                await archival_task
+            except asyncio.CancelledError:
+                pass
+        
         db.close()
         await consumer.close()
         await clickhouse.close_clickhouse_client()
