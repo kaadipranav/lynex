@@ -10,6 +10,7 @@ from datetime import datetime
 import clickhouse
 import alerts
 import notifiers
+from pricing import pricing_calculator
 
 logger = logging.getLogger("watchllm.processor.handlers")
 
@@ -87,46 +88,40 @@ async def enrich_event(event: Dict[str, Any]) -> Dict[str, Any]:
 
 async def enrich_token_usage(event: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Enrich token usage events with cost estimates.
+    Enrich token usage events with cost estimates using pricing calculator.
     """
     body = event.get("body", {})
-    model = body.get("model", "").lower()
-    input_tokens = body.get("inputTokens", 0)
-    output_tokens = body.get("outputTokens", 0)
+    model = body.get("model", "")
+    input_tokens = body.get("inputTokens")
+    output_tokens = body.get("outputTokens")
+    total_tokens = body.get("totalTokens")
     
-    # Cost per 1K tokens (approximate, as of late 2024)
-    PRICING = {
-        "gpt-4": {"input": 0.03, "output": 0.06},
-        "gpt-4-turbo": {"input": 0.01, "output": 0.03},
-        "gpt-4o": {"input": 0.005, "output": 0.015},
-        "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
-        "gpt-3.5-turbo": {"input": 0.0005, "output": 0.0015},
-        "claude-3-opus": {"input": 0.015, "output": 0.075},
-        "claude-3-sonnet": {"input": 0.003, "output": 0.015},
-        "claude-3-haiku": {"input": 0.00025, "output": 0.00125},
-        "claude-3.5-sonnet": {"input": 0.003, "output": 0.015},
-    }
+    # Calculate cost using pricing calculator
+    cost = pricing_calculator.calculate_cost(
+        model=model,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        total_tokens=total_tokens,
+    )
     
-    # Find matching pricing
-    pricing = None
-    for model_key, price in PRICING.items():
-        if model_key in model:
-            pricing = price
-            break
-    
-    if pricing:
-        input_cost = (input_tokens / 1000) * pricing["input"]
-        output_cost = (output_tokens / 1000) * pricing["output"]
-        total_cost = input_cost + output_cost
+    if cost > 0:
+        event["estimated_cost_usd"] = cost
         
-        event["estimated_cost_usd"] = round(total_cost, 6)
-        event["cost_breakdown"] = {
-            "input_cost": round(input_cost, 6),
-            "output_cost": round(output_cost, 6),
-            "model": model,
-        }
+        # Add breakdown if we have input/output split
+        if input_tokens is not None and output_tokens is not None:
+            pricing_info = pricing_calculator.get_model_pricing(model)
+            input_cost = (input_tokens / 1_000_000) * pricing_info["input"]
+            output_cost = (output_tokens / 1_000_000) * pricing_info["output"]
+            
+            event["cost_breakdown"] = {
+                "input_cost": round(input_cost, 6),
+                "output_cost": round(output_cost, 6),
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "model": model,
+            }
         
-        logger.debug(f"Estimated cost for {model}: ${total_cost:.6f}")
+        logger.debug(f"Estimated cost for {model}: ${cost:.6f}")
     
     return event
 

@@ -30,12 +30,12 @@ This plan outlines the step-by-step actions required to transform the WatchLLM c
     - [x] Create API endpoints in `ui-backend` to CRUD alert rules.
 
 ### 4. SDK Reliability (Retries)
-- [ ] **Python SDK**:
-    - [ ] Add `tenacity` dependency.
-    - [ ] Wrap the `_worker` loop's request logic with a retry decorator (exponential backoff, max 3 retries).
-- [ ] **JS SDK**:
-    - [ ] Implement a retry loop in the `flush` method with exponential backoff (e.g., 1s, 2s, 4s).
-    - [ ] Add a `maxRetries` configuration option.
+- [x] **Python SDK**:
+    - [x] Add `tenacity` dependency.
+    - [x] Wrap the `_worker` loop's request logic with a retry decorator (exponential backoff, max 3 retries).
+- [x] **JS SDK**:
+    - [x] Implement a retry loop in the `flush` method with exponential backoff (e.g., 1s, 2s, 4s).
+    - [x] Add a `maxRetries` configuration option.
 
 ---
 
@@ -44,38 +44,65 @@ This plan outlines the step-by-step actions required to transform the WatchLLM c
 **Goal:** Implement the primary value proposition: visualizing AI agent execution.
 
 ### 1. Trace Visualization (Backend)
-- [ ] **Schema Update**: Ensure `events` table has `trace_id` and `parent_event_id` columns (already in schema, verify usage).
-- [ ] **Trace API**:
-    - [ ] Create `GET /api/v1/traces/{trace_id}` endpoint in `ui-backend`.
-    - [ ] Implement ClickHouse query to fetch all events for a given `trace_id`, ordered by timestamp.
-    - [ ] Construct a tree structure (waterfall) from the flat event list.
-- [ ] **Trace List API**:
-    - [ ] Create `GET /api/v1/traces` endpoint to list recent traces (grouped by `trace_id`).
+- [x] **Schema Update**: Ensure `events` table has `trace_id` and `parent_event_id` columns (already in schema, verify usage).
+- [x] **Trace API**:
+    - [x] Create `GET /api/v1/traces/{trace_id}` endpoint in `ui-backend`.
+    - [x] Implement ClickHouse query to fetch all events for a given `trace_id`, ordered by timestamp.
+    - [x] Create `GET /api/v1/traces` endpoint to list recent traces.
+- [x] **Span Hierarchy Reconstruction**:
+    - [x] Build tree structure from flat event list using `parent_event_id`.
+    - [x] Calculate trace duration and metadata.
 
 ### 2. Trace Visualization (Frontend)
-- [ ] **Trace List Page**: Create a new page to list traces with summary stats (latency, token cost, error count).
-- [ ] **Trace Detail View**:
-    - [ ] Implement a Waterfall chart component (using Recharts or custom SVG).
-    - [ ] Show span details on click (inputs, outputs, metadata).
-    - [ ] Highlight errors in red.
+- [x] **Trace List Page**:
+    - [x] Create `TracesPage.tsx` to list recent traces with summary data.
+    - [x] Display trace_id, duration, event count, cost, and status.
+- [x] **Trace Detail Page**:
+    - [x] Create `TraceView.tsx` component for hierarchical span visualization.
+    - [x] Implement collapsible tree view with indentation.
+    - [x] Color-code spans by type (span, error, model_response, etc.).
+    - [x] Add click-to-inspect functionality for span details.
+- [x] **Navigation**:
+    - [x] Add "Traces" link to navigation bar.
+    - [x] Add routes for `/traces` and `/traces/:traceId`.
 
-### 3. Agent Step Debugger
+### 3. Cost Attribution
+- [x] **Pricing Table**:
+    - [x] Create `pricing.py` module with comprehensive model pricing data.
+    - [x] Include pricing for GPT-4, Claude, Gemini, Mistral, Cohere models.
+    - [x] Implement `PricingCalculator` class with cost calculation logic.
+- [x] **Cost Enrichment**:
+    - [x] Update `handlers.py` to use pricing calculator for token_usage events.
+    - [x] Add `estimated_cost_usd` field to enriched events.
+    - [x] Include cost breakdown (input_cost, output_cost) when available.
+- [x] **Model Name Normalization**:
+    - [x] Handle versioned model names (e.g., "gpt-4-0125-preview" → "gpt-4").
+    - [x] Fallback to default pricing for unknown models.
+
+### 4. Batch Ingestion
+- [x] **Batch Endpoint**: `POST /api/v1/events/batch` (already implemented)
+    - [x] Accept up to 100 events per request.
+    - [x] Queue all events atomically.
+    - [x] Return batch status and event IDs.
+
+### 5. Agent Step Debugger
 - [ ] **Step Indexing**: Ensure `agent_action` events include a `step_index` or logical sequence number.
 - [ ] **Debug UI**:
     - [ ] Create a "Replay" view for a trace.
     - [ ] Allow stepping forward/backward through events.
     - [ ] Show the state of the agent at each step (context, memory).
 
-### 4. Automated Tests
-- [ ] **Test Infrastructure**:
-    - [ ] Add `pytest` and `httpx` to `requirements.txt` for all services.
-    - [ ] Create `conftest.py` with fixtures for MongoDB and ClickHouse mocks.
-- [ ] **Unit Tests**:
-    - [ ] Write tests for `ingest-api` event validation.
-    - [ ] Write tests for `billing` logic (subscription limits).
-    - [ ] Write tests for `processor` alert evaluation.
-- [ ] **Integration Tests**:
-    - [ ] Create a docker-compose test profile.
+### 6. Automated Tests
+- [x] **Test Infrastructure**:
+    - [x] Created `conftest.py` with fixtures for MongoDB, ClickHouse, and Redis mocks.
+    - [x] Added `pyproject.toml` with pytest configuration.
+    - [x] Created `requirements-test.txt` with test dependencies.
+- [x] **Unit Tests**:
+    - [x] `test_ingest_api.py` - Event validation, schema tests, batch validation.
+    - [x] `test_billing.py` - Subscription logic, usage limits, monthly reset.
+    - [x] `test_processor.py` - Pricing calculation, alert evaluation, event enrichment.
+- [x] **Integration Tests**:
+    - [x] `test_e2e_flow.py` - End-to-end event ingestion pipeline tests.
     - [ ] Write an E2E test that sends an event via SDK and verifies it in the `ui-backend` response.
 
 ---
@@ -85,19 +112,28 @@ This plan outlines the step-by-step actions required to transform the WatchLLM c
 **Goal:** Make the platform usable for teams and sellable to enterprises.
 
 ### 1. Alert Configuration UI
-- [ ] **Frontend Page**: Create `AlertsPage.tsx`.
-- [ ] **Rule Builder**: UI to define rules (Event Type, Condition, Threshold, Channel).
-- [ ] **Integration**: Connect to the new Alert CRUD API.
+- [x] **Frontend Page**: Created `AlertsPage.tsx` with rule builder UI.
+- [x] **Rule Builder**: Form to define rules (Event Type, Condition, Threshold, Channel).
+- [x] **Integration**: Connected to Alert CRUD API (routes/alerts.py).
+- [x] **Navigation**: Added "Alerts" link to navigation bar and routing.
 
 ### 2. RBAC Implementation
-- [ ] **Data Model**: Add `roles` field to `User` model and `members` list to `Project` model.
-- [ ] **Middleware**: Update `supabase_middleware.py` to check project membership and permissions.
-- [ ] **Frontend**: Hide admin actions (e.g., "Delete Project", "Billing") for non-admin users.
+- [x] **Data Model**: Added `roles` field to `User` model and `members` list to `Project` model.
+- [x] **Backend**: Created comprehensive RBAC system in `routes/projects.py` with role hierarchy.
+- [x] **Permissions**: Implemented `check_permission()` and `verify_project_access()` helpers.
+- [x] **Roles**: OWNER, ADMIN, MEMBER, VIEWER with proper permission levels.
 
 ### 3. Project Management
-- [ ] **Project Selector**: Add a dropdown in the top navigation to switch the active `project_id`.
-- [ ] **Context**: Store selected project in React Context/Local Storage.
-- [ ] **Create/Edit UI**: Implement forms to create new projects and rename existing ones.
+- [x] **Project Selector**: Created `ProjectSelector.tsx` dropdown component in navigation.
+- [x] **Context**: Implemented `useProject` hook with React Context and localStorage persistence.
+- [x] **Create/Edit UI**: Full project creation modal with name and description.
+- [x] **Backend API**: Complete CRUD operations in `routes/projects.py`:
+  - [x] List projects (filtered by user access)
+  - [x] Create project (user becomes owner)
+  - [x] Update project (requires ADMIN)
+  - [x] Delete project (requires OWNER, soft delete)
+  - [x] Add/Remove members (requires ADMIN)
+  - [x] Update member roles (requires ADMIN)
 
 ---
 

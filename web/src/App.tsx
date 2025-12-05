@@ -7,7 +7,12 @@ import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import BillingPage from './pages/BillingPage'
 import UsagePage from './pages/UsagePage'
+import TracesPage from './pages/TracesPage'
+import TraceView from './pages/TraceView'
+import AlertsPage from './pages/AlertsPage'
 import { AuthProvider, useAuth } from './hooks/useAuth'
+import { ProjectProvider } from './hooks/useProject'
+import ProjectSelector from './components/ProjectSelector'
 
 // Protected route wrapper
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -36,19 +41,21 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             <div className="flex gap-4 text-sm font-medium text-gray-600">
               <Link to="/" className="hover:text-indigo-600">Dashboard</Link>
               <Link to="/events" className="hover:text-indigo-600">Events</Link>
+              <Link to="/traces" className="hover:text-indigo-600">Traces</Link>
+              <Link to="/alerts" className="hover:text-indigo-600">Alerts</Link>
               <Link to="/usage" className="hover:text-indigo-600">Usage</Link>
               <Link to="/settings" className="hover:text-indigo-600">Settings</Link>
               <Link to="/billing" className="hover:text-indigo-600">Billing</Link>
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <ProjectSelector />
             <span className="text-sm text-gray-500">{user?.email}</span>
             <button
               onClick={() => logout()}
               className="text-sm text-gray-500 hover:text-red-600"
             >
               Logout
-
             </button>
           </div>
         </div>
@@ -75,6 +82,21 @@ function AppRoutes() {
           <Layout><EventsPage /></Layout>
         </ProtectedRoute>
       } />
+      <Route path="/traces" element={
+        <ProtectedRoute>
+          <Layout><TracesPage /></Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/traces/:traceId" element={
+        <ProtectedRoute>
+          <Layout><TraceView /></Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/alerts" element={
+        <ProtectedRoute>
+          <Layout><AlertsPage /></Layout>
+        </ProtectedRoute>
+      } />
       <Route path="/settings" element={
         <ProtectedRoute>
           <Layout><SettingsPage /></Layout>
@@ -98,9 +120,11 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppRoutes />
-      </Router>
+      <ProjectProvider>
+        <Router>
+          <AppRoutes />
+        </Router>
+      </ProjectProvider>
     </AuthProvider>
   );
 }

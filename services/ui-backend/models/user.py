@@ -13,6 +13,10 @@ class UserProfile(BaseModel):
     avatar_url: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    
+    # RBAC: User's current project and role
+    current_project_id: Optional[str] = None
+    projects: List[str] = Field(default_factory=list)  # List of project_ids user has access to
 
 class APIKey(BaseModel):
     id: str

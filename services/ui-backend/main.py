@@ -35,6 +35,7 @@ from routes.auth import router as auth_router
 from routes.admin import router as admin_router
 from routes.subscription import router as subscription_router
 from routes.alerts import router as alerts_router
+from routes.traces import router as traces_router
 import clickhouse as ch
 import redis_client
 
@@ -179,6 +180,7 @@ app.include_router(auth_router, prefix="/api/v1", tags=["Authentication"])
 app.include_router(subscription_router, prefix="/api/v1", tags=["Subscription"])
 app.include_router(admin_router, prefix="/api/v1", tags=["Admin"])
 app.include_router(alerts_router, prefix="/api/v1", tags=["Alerts"])
+app.include_router(traces_router, prefix="/api/v1", tags=["Traces"])
 
 
 # =============================================================================

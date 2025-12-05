@@ -24,6 +24,7 @@ export class WatchLLM {
       host: config.host?.replace(/\/$/, '') || 'http://localhost:8001',
       batchSize: config.batchSize || 10,
       flushInterval: config.flushInterval || 5000,
+      maxRetries: config.maxRetries || 3,
       debug: config.debug || false,
     };
 
@@ -82,7 +83,7 @@ export class WatchLLM {
   }
 
   captureEvent(type: string, body: EventBody, context?: Record<string, any>) {
-    const event: LynexEvent = {
+    const event: WatchLLMEvent = {
       eventId: generateUUID(),
       projectId: this.config.projectId,
       type,
@@ -144,6 +145,45 @@ export class WatchLLM {
     });
   }
 
+  private async sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private async sendWithRetry(url: string, events: WatchLLMEvent[]): Promise<void> {
+    let lastError: Error | null = null;
+    
+    for (let attempt = 0; attempt < this.config.maxRetries!; attempt++) {
+      try {
+        const response = await axios.post(url, { events }, {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': this.config.apiKey,
+          },
+          timeout: 5000,
+        });
+
+        if (response.status >= 200 && response.status < 300) {
+          this.log('Flushed:', events.length, 'events');
+          return; // Success
+        }
+        
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      } catch (error) {
+        lastError = error as Error;
+        
+        if (attempt < this.config.maxRetries! - 1) {
+          // Exponential backoff: 1s, 2s, 4s
+          const backoffMs = Math.min(1000 * Math.pow(2, attempt), 10000);
+          this.log(`Retry attempt ${attempt + 1}/${this.config.maxRetries} after ${backoffMs}ms`);
+          await this.sleep(backoffMs);
+        }
+      }
+    }
+    
+    // All retries failed
+    throw lastError || new Error('All retry attempts failed');
+  }
+
   async flush(sync = false): Promise<void> {
     if (this.isFlushing || this.queue.length === 0) return;
 
@@ -154,31 +194,19 @@ export class WatchLLM {
       const url = `${this.config.host}/api/v1/events/batch`;
       
       if (sync && typeof navigator !== 'undefined' && navigator.sendBeacon) {
-        // Use sendBeacon for sync flush in browser
+        // Use sendBeacon for sync flush in browser (no retries)
         navigator.sendBeacon(
           url,
           new Blob([JSON.stringify({ events })], { type: 'application/json' })
         );
         this.log('Flushed via sendBeacon:', events.length, 'events');
       } else {
-        const response = await axios.post(url, { events }, {
-          headers: {
-            'Content-Type': 'application/json',
-            'X-API-Key': this.config.apiKey,
-          },
-        });
-
-        if (response.status >= 200 && response.status < 300) {
-          this.log('Flushed:', events.length, 'events');
-        } else {
-          console.error('[Lynex] Flush failed:', response.status);
-          // Re-queue events on failure
-          this.queue.unshift(...events);
-        }
+        // Use retry logic for async flush
+        await this.sendWithRetry(url, events);
       }
     } catch (error) {
-      console.error('[Lynex] Flush error:', error);
-      // Re-queue events on failure
+      console.error('[WatchLLM] Flush failed after retries:', error);
+      // Re-queue events on final failure
       this.queue.unshift(...events);
     } finally {
       this.isFlushing = false;

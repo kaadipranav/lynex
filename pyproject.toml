@@ -1,0 +1,52 @@
+[tool.pytest.ini_options]
+# Pytest configuration for WatchLLM tests
+
+# Test discovery patterns
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Test paths
+testpaths = ["tests"]
+
+# Markers for test categorization
+markers = [
+    "unit: Unit tests (fast, no external dependencies)",
+    "integration: Integration tests (require services)",
+    "e2e: End-to-end tests (require full stack)",
+    "slow: Tests that take significant time",
+]
+
+# Async support
+asyncio_mode = "auto"
+
+# Output options
+addopts = [
+    "-v",                      # Verbose output
+    "--strict-markers",        # Enforce marker registration
+    "--tb=short",             # Short traceback format
+    "--color=yes",            # Colored output
+    "-ra",                    # Show summary of all test outcomes
+    "--durations=10",         # Show 10 slowest tests
+]
+
+# Coverage options (when using --cov flag)
+[tool.coverage.run]
+source = ["services"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]

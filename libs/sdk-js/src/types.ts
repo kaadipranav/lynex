@@ -4,6 +4,7 @@
   host?: string;
   batchSize?: number;
   flushInterval?: number;
+  maxRetries?: number;  // New: maximum retry attempts
   debug?: boolean;
 }
 
