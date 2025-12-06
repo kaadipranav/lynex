@@ -190,3 +190,68 @@ def validate_startup(settings: BaseServiceSettings, service_name: str) -> bool:
     settings.log_config_summary(service_name)
     
     return True
+
+
+def validate_on_startup(
+    service_name: str,
+    required_vars: List[str],
+    optional_vars: Optional[List[str]] = None,
+    env: str = "development"
+) -> bool:
+    """
+    Validate environment variables on service startup.
+    This is a compatibility wrapper for config files that call validate_on_startup.
+    
+    Args:
+        service_name: Name of the service being validated
+        required_vars: List of required environment variable names
+        optional_vars: List of optional environment variable names (for warnings)
+        env: Environment name (development, staging, production)
+    
+    Returns:
+        True if validation passes
+    
+    Raises:
+        ValueError: If required variables are missing in production
+    """
+    if optional_vars is None:
+        optional_vars = []
+    
+    logger.info(f"Validating environment variables for {service_name}...")
+    
+    missing_required = []
+    missing_optional = []
+    
+    # Check required variables
+    for var in required_vars:
+        value = os.getenv(var)
+        if not value:
+            missing_required.append(var)
+        else:
+            logger.debug(f"✓ Required: {var}")
+    
+    # Check optional variables (for warnings only)
+    for var in optional_vars:
+        value = os.getenv(var)
+        if not value:
+            missing_optional.append(var)
+        else:
+            logger.debug(f"✓ Optional: {var}")
+    
+    # In production, fail if required vars are missing
+    if env == "production" and missing_required:
+        error_msg = f"Production configuration error for {service_name}:\n"
+        error_msg += "\n".join(f"  - Missing required: {var}" for var in missing_required)
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+    
+    # Log warnings for missing optional vars
+    if missing_optional:
+        logger.warning(f"⚠️  Optional variables not set: {', '.join(missing_optional)}")
+    
+    # Log warnings for missing required vars in non-production
+    if missing_required and env != "production":
+        logger.warning(f"⚠️  Required variables not set (will use defaults): {', '.join(missing_required)}")
+    
+    logger.info(f"✓ Configuration validation complete for {service_name}")
+    return True

@@ -144,7 +144,7 @@ async def get_event(
 ):
     """Get a single event by ID."""
     
-    sql = f"""
+    sql = """
     SELECT 
         event_id,
         project_id,
@@ -157,13 +157,18 @@ async def get_event(
         estimated_cost_usd,
         queue_latency_ms
     FROM events
-    WHERE event_id = '{event_id}' AND project_id = '{project_id}'
+    WHERE event_id = %(event_id)s AND project_id = %(project_id)s
     LIMIT 1
     """
     
+    params = {
+        "event_id": event_id,
+        "project_id": project_id
+    }
+    
     try:
         client = await ch.get_client()
-        result = await client.query(sql)
+        result = await client.query(sql, params)
         
         if not result:
             raise HTTPException(

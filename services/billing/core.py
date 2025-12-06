@@ -206,6 +206,31 @@ class WhopClient:
             payload,
             hashlib.sha256
         ).hexdigest()
+        
+        return hmac.compare_digest(expected, signature)
+
+
+def get_whop_client(api_key: str, webhook_secret: str = "") -> WhopClient:
+    """Get a WhopClient instance."""
+    return WhopClient(api_key, webhook_secret)
+
+
+# =============================================================================
+# Plan Mapping
+# =============================================================================
+
+def map_whop_plan_to_tier(plan_id: str) -> SubscriptionTier:
+    """Map Whop plan ID to subscription tier."""
+    # Configure these with your actual Whop plan IDs
+    PLAN_MAPPING = {
+        "plan_pro_monthly": SubscriptionTier.PRO,
+        "plan_pro_yearly": SubscriptionTier.PRO,
+        "plan_business_monthly": SubscriptionTier.BUSINESS,
+        "plan_business_yearly": SubscriptionTier.BUSINESS,
+    }
+    return PLAN_MAPPING.get(plan_id, SubscriptionTier.FREE)
+
+
 async def update_subscription_from_whop(user_id: str, membership_data: dict):
     """Update subscription based on Whop membership data."""
     db = await get_db()
@@ -239,40 +264,6 @@ async def update_subscription_from_whop(user_id: str, membership_data: dict):
     if reset_usage:
         update_data["events_used_this_period"] = 0
         logger.info(f"Resetting usage for {user_id} due to new billing period")
-    
-    await db.subscriptions.update_one(
-        {"user_id": user_id},
-        {"$set": update_data},
-        upsert=True
-    )
-    
-    logger.info(f"Updated subscription for {user_id}: {tier}")
-    # Configure these with your actual Whop plan IDs
-    PLAN_MAPPING = {
-        "plan_pro_monthly": SubscriptionTier.PRO,
-        "plan_pro_yearly": SubscriptionTier.PRO,
-        "plan_business_monthly": SubscriptionTier.BUSINESS,
-        "plan_business_yearly": SubscriptionTier.BUSINESS,
-    }
-    return PLAN_MAPPING.get(plan_id, SubscriptionTier.FREE)
-
-
-async def update_subscription_from_whop(user_id: str, membership_data: dict):
-    """Update subscription based on Whop membership data."""
-    db = await get_db()
-    
-    # Map Whop plan to our tier
-    plan_id = membership_data.get("plan", {}).get("id", "")
-    tier = map_whop_plan_to_tier(plan_id)
-    
-    update_data = {
-        "tier": tier,
-        "whop_membership_id": membership_data.get("id"),
-        "whop_plan_id": plan_id,
-        "status": "active" if membership_data.get("valid") else "canceled",
-        "current_period_start": datetime.fromisoformat(membership_data.get("renewal_period_start", datetime.utcnow().isoformat())),
-        "current_period_end": datetime.fromisoformat(membership_data.get("renewal_period_end", datetime.utcnow().isoformat())),
-    }
     
     await db.subscriptions.update_one(
         {"user_id": user_id},

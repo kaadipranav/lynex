@@ -32,7 +32,7 @@ interface PromptDiff {
 export default function PromptDetailPage() {
   const { promptName } = useParams<{ promptName: string }>();
   const navigate = useNavigate();
-  
+
   const [versions, setVersions] = useState<PromptVersion[]>([]);
   const [selectedVersionA, setSelectedVersionA] = useState<number | null>(null);
   const [selectedVersionB, setSelectedVersionB] = useState<number | null>(null);
@@ -58,7 +58,7 @@ export default function PromptDetailPage() {
       const response = await api.get(`/prompts/${promptName}/versions`);
       const versionsList = response.data;
       setVersions(versionsList);
-      
+
       // Auto-select latest two versions for diff
       if (versionsList.length >= 2) {
         setSelectedVersionA(versionsList[1].version_number);
@@ -66,7 +66,7 @@ export default function PromptDetailPage() {
       } else if (versionsList.length === 1) {
         setSelectedVersionB(versionsList[0].version_number);
       }
-      
+
       setError(null);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to fetch versions');
@@ -77,7 +77,7 @@ export default function PromptDetailPage() {
 
   const fetchDiff = async () => {
     if (selectedVersionA === null || selectedVersionB === null) return;
-    
+
     try {
       const response = await api.get(`/prompts/${promptName}/diff`, {
         params: {

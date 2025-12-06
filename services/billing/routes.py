@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from typing import Optional
 import logging
 
-from billing import (
+from core import (
     get_subscription,
     get_usage_stats,
     check_usage_limit,
@@ -183,6 +183,12 @@ async def whop_webhook(
             )
     
     elif event_type == "payment.succeeded":
+        # Payment succeeded - subscription is active
+        logger.info(f"Payment succeeded: {data.get('id')}")
+        user_id = data.get("membership", {}).get("metadata", {}).get("user_id")
+        if user_id:
+            await update_subscription_from_whop(user_id, data)
+    
     elif event_type == "payment.failed":
         logger.warning(f"Payment failed: {data.get('id')}")
         user_id = data.get("membership", {}).get("metadata", {}).get("user_id")
@@ -193,7 +199,5 @@ async def whop_webhook(
                 {"user_id": user_id},
                 {"$set": {"status": "past_due"}}
             )
-    
-    return {"received": True}[user_id]["status"] = "past_due"
     
     return {"received": True}

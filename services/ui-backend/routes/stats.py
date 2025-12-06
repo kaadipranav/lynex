@@ -223,23 +223,32 @@ async def get_timeseries(
         "1d": "toStartOfDay",
     }
     
-    time_func = interval_map.get(interval, "toStartOfHour")
-    
-    # Map metric to SQL value expression
-    if metric == "requests":
-        value_sql = "count()"
-    elif metric == "errors":
-        value_sql = "countIf(type = 'error')"
-    elif metric == "tokens":
-        value_sql = "sum(JSONExtractInt(body, 'inputTokens') + JSONExtractInt(body, 'outputTokens'))"
-    elif metric == "cost":
-        value_sql = "sum(estimated_cost_usd)"
-    else:
+    # Validate interval is in whitelist
+    if interval not in interval_map:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"error": f"Unknown metric: {metric}"}
+            detail={"error": f"Invalid interval: {interval}. Must be one of: {', '.join(interval_map.keys())}"}
         )
     
+    time_func = interval_map[interval]
+    
+    # Map metric to SQL value expression (whitelisted values only)
+    metric_map = {
+        "requests": "count()",
+        "errors": "countIf(type = 'error')",
+        "tokens": "sum(JSONExtractInt(body, 'inputTokens') + JSONExtractInt(body, 'outputTokens'))",
+        "cost": "sum(estimated_cost_usd)",
+    }
+    
+    if metric not in metric_map:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": f"Unknown metric: {metric}. Must be one of: {', '.join(metric_map.keys())}"}
+        )
+    
+    value_sql = metric_map[metric]
+    
+    # Safe to use f-string here since time_func and value_sql are from whitelisted maps
     sql = f"""
     SELECT
         {time_func}(timestamp) as bucket,

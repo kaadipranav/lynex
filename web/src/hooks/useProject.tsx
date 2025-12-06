@@ -41,7 +41,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       // Load saved project from localStorage or use first project
       const savedProjectId = localStorage.getItem('currentProjectId');
       const savedProject = projectsList.find((p: Project) => p.project_id === savedProjectId);
-      
+
       if (savedProject) {
         setCurrentProject(savedProject);
       } else if (projectsList.length > 0) {

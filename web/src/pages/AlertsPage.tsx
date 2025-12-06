@@ -267,11 +267,10 @@ export default function AlertsPage() {
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="text-lg font-semibold text-white">{rule.name}</h3>
                     <span
-                      className={`px-2 py-0.5 rounded text-xs ${
-                        rule.enabled
+                      className={`px-2 py-0.5 rounded text-xs ${rule.enabled
                           ? 'bg-green-500/20 text-green-400'
                           : 'bg-gray-500/20 text-gray-400'
-                      }`}
+                        }`}
                     >
                       {rule.enabled ? 'Enabled' : 'Disabled'}
                     </span>

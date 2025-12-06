@@ -1,0 +1,107 @@
+# =============================================================================
+# Lynex - Environment Configuration Template
+# =============================================================================
+# ✅ Docker containers are running!
+# ⏭️ Copy this to .env.local and configure Supabase
+# =============================================================================
+
+# =============================================================================
+# Environment
+# =============================================================================
+ENV=development
+DEBUG=true
+
+# =============================================================================
+# Database - ClickHouse (✅ RUNNING IN DOCKER)
+# =============================================================================
+CLICKHOUSE_HOST=localhost
+CLICKHOUSE_HTTP_PORT=8123
+CLICKHOUSE_PORT=9000
+CLICKHOUSE_USER=default
+CLICKHOUSE_PASSWORD=
+CLICKHOUSE_DATABASE=default
+
+# =============================================================================
+# Database - MongoDB (✅ RUNNING IN DOCKER)
+# =============================================================================
+MONGO_URL=mongodb://localhost:27017
+MONGO_DB_NAME=watchllm
+
+# =============================================================================
+# Queue - Redis (✅ RUNNING IN DOCKER)
+# =============================================================================
+REDIS_URL=redis://localhost:6379
+QUEUE_MODE=redis
+
+# =============================================================================
+# Authentication - Supabase (⏭️ YOU NEED TO CONFIGURE THIS)
+# =============================================================================
+# Go to: https://supabase.com
+# 1. Create a free account
+# 2. Create a new project (takes ~2 minutes)
+# 3. Go to: Settings → API
+# 4. Copy the values below:
+
+SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+SUPABASE_ANON_KEY=YOUR-ANON-KEY-HERE
+SUPABASE_SERVICE_KEY=YOUR-SERVICE-ROLE-KEY-HERE
+
+# =============================================================================
+# Security Secrets (✅ GENERATED FOR YOU)
+# =============================================================================
+JWT_SECRET=4U20CzxE4hYT2KmuMyzIvCvGv5CiFq8pL371tNfVXoo=
+ADMIN_API_KEY=Exz3kbgurUOSdZQLtt4hc9JzCuj6TVBamkSwByhSdaM=
+
+# =============================================================================
+# API Configuration
+# =============================================================================
+API_HOST=0.0.0.0
+INGEST_API_PORT=8001
+UI_BACKEND_PORT=8000
+BILLING_PORT=8002
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+
+# =============================================================================
+# Frontend Environment Variables
+# =============================================================================
+VITE_API_URL=http://localhost:8000
+VITE_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
+VITE_SUPABASE_ANON_KEY=YOUR-ANON-KEY-HERE
+
+# =============================================================================
+# Monitoring - Sentry (OPTIONAL - Leave empty for now)
+# =============================================================================
+SENTRY_DSN=
+SENTRY_ENVIRONMENT=development
+VITE_SENTRY_DSN=
+VITE_SENTRY_ENVIRONMENT=development
+
+# =============================================================================
+# Monitoring - Datadog (DISABLED)
+# =============================================================================
+DATADOG_ENABLED=false
+DATADOG_API_KEY=
+DD_SERVICE=lynex
+DD_ENV=development
+DD_VERSION=1.0.0
+
+# =============================================================================
+# Payments - Whop (OPTIONAL)
+# =============================================================================
+WHOP_API_KEY=
+WHOP_WEBHOOK_SECRET=
+
+# =============================================================================
+# NEXT STEPS:
+# =============================================================================
+# 1. ✅ Docker containers are running
+# 2. ⏭️ Copy this file to .env.local
+# 3. ⏭️ Set up Supabase account (5 minutes):
+#    - Go to https://supabase.com
+#    - Create new project
+#    - Copy URL, Anon Key, and Service Role Key
+#    - Replace the YOUR-PROJECT and YOUR-ANON-KEY placeholders
+# 4. ⏭️ Save .env.local
+# 5. ⏭️ Start the backend services
+# 6. ⏭️ Start the frontend
+# =============================================================================
